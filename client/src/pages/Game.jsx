@@ -361,7 +361,7 @@ export default function Game() {
   const [likes, setLikes] = useState(0);
   const [liked, setLiked] = useState(false);
   const [liking, setLiking] = useState(false);
-  const [gameBlobUrl, setGameBlobUrl] = useState(null);
+  const [gameHtml, setGameHtml] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -376,18 +376,13 @@ export default function Game() {
           setLoading(false);
           trackRecentlyPlayed(res.data);
 
-          // Fetch the game HTML and create a blob URL so the iframe
-          // renders it as HTML regardless of the server's Content-Type.
+          // Fetch game HTML so we can inject it via srcdoc.
+          // Supabase Storage serves .html as text/plain with a restrictive CSP,
+          // so using src= directly won't render the game. srcdoc bypasses this.
           if (res.data.fileUrl) {
-            try {
-              const htmlRes = await fetch(res.data.fileUrl);
-              const html = await htmlRes.text();
-              const blob = new Blob([html], { type: 'text/html' });
-              if (!cancelled) setGameBlobUrl(URL.createObjectURL(blob));
-            } catch {
-              // Fallback: use the raw URL (may render as text if Content-Type is wrong)
-              if (!cancelled) setGameBlobUrl(res.data.fileUrl);
-            }
+            const htmlRes = await fetch(res.data.fileUrl);
+            const html = await htmlRes.text();
+            if (!cancelled) setGameHtml(html);
           }
         }
         axios.patch(`/api/games/${id}/increment`).catch(() => {});
@@ -400,10 +395,7 @@ export default function Game() {
     }
 
     loadGame();
-    return () => {
-      cancelled = true;
-      setGameBlobUrl(prev => { if (prev?.startsWith('blob:')) URL.revokeObjectURL(prev); return null; });
-    };
+    return () => { cancelled = true; };
   }, [id]);
 
   async function handleLike() {
@@ -605,7 +597,7 @@ export default function Game() {
         </div>
 
         {/* Loading overlay */}
-        {(!gameBlobUrl || iframeLoading) && (
+        {(!gameHtml || iframeLoading) && (
           <div className="absolute inset-0 top-[41px] flex items-center justify-center bg-[#07070f] z-10">
             <div className="flex flex-col items-center gap-4">
               <div className="w-12 h-12 border-4 border-[#1e1e3f] border-t-purple-500 rounded-full animate-spin" />
@@ -614,10 +606,10 @@ export default function Game() {
           </div>
         )}
 
-        {gameBlobUrl && (
+        {gameHtml && (
           <iframe
             ref={iframeRef}
-            src={gameBlobUrl}
+            srcDoc={gameHtml}
             title={game.title}
             className="w-full"
             style={{
