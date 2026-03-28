@@ -5,6 +5,7 @@ const cors    = require('cors');
 
 const gamesRouter    = require('./routes/games');
 const creatorsRouter = require('./routes/creators');
+const adminRouter    = require('./routes/admin');
 
 const app = express();
 
@@ -19,6 +20,7 @@ app.use(express.json());
 // Routes
 app.use('/api/games',    gamesRouter);
 app.use('/api/creators', creatorsRouter);
+app.use('/api/admin',    adminRouter);
 
 // Health check
 app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));

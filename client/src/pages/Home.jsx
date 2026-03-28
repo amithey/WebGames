@@ -255,7 +255,7 @@ export default function Home() {
 
     axios
       .get(`/api/games?${params.toString()}`)
-      .then((res) => { setGames(res.data); setLoading(false); })
+      .then((res) => { setGames(Array.isArray(res.data) ? res.data : []); setLoading(false); })
       .catch((err) => {
         console.error(err);
         setError('Failed to load games.');
