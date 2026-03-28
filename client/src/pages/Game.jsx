@@ -439,13 +439,20 @@ export default function Game() {
   }, [id]);
 
   async function handleLike() {
-    if (liked || liking) return;
+    if (liking) return;
     setLiking(true);
     try {
-      const res = await axios.post(`/api/games/${id}/like`);
-      setLikes(res.data.likes);
-      setLiked(true);
-      localStorage.setItem(`liked_${id}`, '1');
+      if (liked) {
+        const res = await axios.post(`/api/games/${id}/unlike`);
+        setLikes(res.data.likes);
+        setLiked(false);
+        localStorage.removeItem(`liked_${id}`);
+      } else {
+        const res = await axios.post(`/api/games/${id}/like`);
+        setLikes(res.data.likes);
+        setLiked(true);
+        localStorage.setItem(`liked_${id}`, '1');
+      }
     } catch (_) {}
     setLiking(false);
   }
@@ -560,11 +567,11 @@ export default function Game() {
                 </span>
                 <button
                   onClick={handleLike}
-                  disabled={liked || liking}
+                  disabled={liking}
                   className={`flex items-center gap-1.5 transition-colors ${
-                    liked ? 'text-pink-400 cursor-default' : 'text-slate-400 hover:text-pink-400'
+                    liked ? 'text-pink-400 hover:text-pink-300' : 'text-slate-400 hover:text-pink-400'
                   }`}
-                  title={liked ? 'Liked!' : 'Like this game'}
+                  title={liked ? 'Unlike' : 'Like this game'}
                 >
                   <HeartIcon filled={liked} />
                   <span>{likes.toLocaleString()} {liked ? 'Liked' : 'Like'}</span>

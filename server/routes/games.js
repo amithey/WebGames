@@ -270,6 +270,22 @@ router.post('/:id/like', interactionLimiter, async (req, res) => {
   }
 });
 
+// ─── POST /api/games/:id/unlike ───────────────────────────────────────────────
+
+router.post('/:id/unlike', interactionLimiter, async (req, res) => {
+  try {
+    const { rows: [updated] } = await db.query(
+      'UPDATE games SET likes = GREATEST(likes - 1, 0) WHERE id = $1 RETURNING likes',
+      [req.params.id]
+    );
+    if (!updated) return res.status(404).json({ error: 'Game not found' });
+    res.json({ likes: updated.likes });
+  } catch (err) {
+    console.error('Error unliking game:', err);
+    res.status(500).json({ error: 'Failed to unlike game' });
+  }
+});
+
 // ─── PATCH /api/games/:id/increment ──────────────────────────────────────────
 
 router.patch('/:id/increment', async (req, res) => {
