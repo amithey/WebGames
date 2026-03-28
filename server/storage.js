@@ -2,21 +2,34 @@ const { createClient } = require('@supabase/supabase-js');
 const path = require('path');
 
 // --- Sanitize and Log ---
-const rawUrl = process.env.SUPABASE_URL || '';
-const rawKey = process.env.SUPABASE_ANON_KEY || '';
+const rawUrl = (process.env.SUPABASE_URL || '').trim().replace(/\/+$/, '');
+const rawKey = (process.env.SUPABASE_ANON_KEY || '').trim();
 
-// Trim and remove trailing slashes from URL
-const supabaseUrl = rawUrl.trim().replace(/\/+$/, '');
-const supabaseKey = rawKey.trim();
+// Validate URL format before passing to createClient
+let supabaseUrl = rawUrl;
+let supabaseKey = rawKey;
+let initError = null;
 
 if (!supabaseUrl || !supabaseKey) {
-  console.error('FATAL: SUPABASE_URL or SUPABASE_ANON_KEY is not set or empty');
+  initError = 'SUPABASE_URL or SUPABASE_ANON_KEY is not set or empty';
+  console.error(`FATAL: ${initError}`);
+  console.error(`  SUPABASE_URL length: ${rawUrl.length}`);
+  console.error(`  SUPABASE_ANON_KEY length: ${rawKey.length}`);
 } else {
-  // Mask the URL for safety: https://abc.supabase.co -> https://***.supabase.co
+  // Verify it's a valid URL
+  try {
+    new URL(supabaseUrl);
+  } catch (e) {
+    initError = `SUPABASE_URL is not a valid URL: "${supabaseUrl.substring(0, 30)}..."`;
+    console.error(`FATAL: ${initError}`);
+  }
+  // Mask the URL for safety
   const maskedUrl = supabaseUrl.replace(/^(https?:\/\/)[^.]+/, '$1***');
-  console.log(`[Supabase] Initializing with URL: ${maskedUrl}`);
+  console.log(`[Supabase] Initializing with URL: ${maskedUrl} (length: ${supabaseUrl.length})`);
+  console.log(`[Supabase] Key length: ${supabaseKey.length}, starts with: ${supabaseKey.substring(0, 10)}...`);
 }
 
+// Use placeholder values if real ones are missing — operations will fail gracefully
 const supabase = createClient(
   supabaseUrl || 'https://placeholder.supabase.co',
   supabaseKey || 'placeholder'
@@ -56,11 +69,10 @@ function getMimeType(filename) {
 
 /**
  * Upload a buffer to Supabase Storage and return its public URL.
- * @param {string} storagePath  e.g. "files/<uuid>/index.html"
- * @param {Buffer} buffer
- * @param {string} [contentType]
  */
 async function uploadFile(storagePath, buffer, contentType) {
+  if (initError) throw new Error(`Storage not configured: ${initError}`);
+
   const { error } = await supabase.storage
     .from(BUCKET)
     .upload(storagePath, buffer, {
@@ -75,9 +87,9 @@ async function uploadFile(storagePath, buffer, contentType) {
 
 /**
  * Delete all files under a "folder" prefix in the bucket.
- * Used when a bad upload needs cleanup.
  */
 async function deleteFolder(prefix) {
+  if (initError) return;
   const { data } = await supabase.storage.from(BUCKET).list(prefix, { limit: 1000 });
   if (data && data.length > 0) {
     const paths = data.map(f => `${prefix}/${f.name}`);
@@ -85,4 +97,9 @@ async function deleteFolder(prefix) {
   }
 }
 
-module.exports = { supabase, uploadFile, deleteFolder, getMimeType };
+/** Returns null if storage is healthy, or an error string */
+function getStorageStatus() {
+  return initError;
+}
+
+module.exports = { supabase, uploadFile, deleteFolder, getMimeType, getStorageStatus };

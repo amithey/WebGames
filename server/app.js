@@ -42,7 +42,24 @@ app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 app.use(generalLimiter);
 
 // ── Health check (before routes so it always works) ──────────────────────────
-app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
+app.get('/api/health', (_req, res) => {
+  const envStatus = {
+    DATABASE_URL:      !!process.env.DATABASE_URL,
+    SUPABASE_URL:      !!process.env.SUPABASE_URL,
+    SUPABASE_ANON_KEY: !!process.env.SUPABASE_ANON_KEY,
+    FRONTEND_URL:      process.env.FRONTEND_URL || '(not set)',
+    NODE_ENV:          process.env.NODE_ENV || '(not set)',
+  };
+  // Check if storage module loaded correctly
+  let storageStatus = 'unknown';
+  try {
+    const { getStorageStatus } = require('./storage');
+    storageStatus = getStorageStatus() || 'ok';
+  } catch (e) {
+    storageStatus = `failed to load: ${e.message}`;
+  }
+  res.json({ status: 'ok', env: envStatus, storage: storageStatus });
+});
 
 // ── Routes (lazy-loaded to catch require-time crashes) ───────────────────────
 try {
