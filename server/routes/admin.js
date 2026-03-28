@@ -1,18 +1,70 @@
 const express   = require('express');
 const router    = express.Router();
+const crypto    = require('crypto');
+const jwt       = require('jsonwebtoken');
 const pool      = require('../db');
 const { createClient } = require('@supabase/supabase-js');
+const { adminLoginLimiter } = require('../middleware/rateLimiter');
+
+// ─── JWT helpers ──────────────────────────────────────────────────────────────
+
+// JWT_SECRET must be set in production — a random fallback is generated per
+// process start (tokens don't survive restarts in dev, which is fine).
+const JWT_SECRET  = process.env.JWT_SECRET || crypto.randomBytes(64).toString('hex');
+const JWT_EXPIRES = '8h';
+
+if (!process.env.JWT_SECRET) {
+  console.warn('⚠️  JWT_SECRET not set — tokens will be invalidated on every cold start. Set JWT_SECRET in production.');
+}
 
 // ─── Auth middleware ──────────────────────────────────────────────────────────
 
 function adminAuth(req, res, next) {
-  const pw = req.headers['x-admin-password'];
-  if (!process.env.ADMIN_PASSWORD || pw !== process.env.ADMIN_PASSWORD) {
+  const authHeader = req.headers['authorization'];
+  if (!authHeader?.startsWith('Bearer ')) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
-  next();
+  const token = authHeader.slice(7);
+  try {
+    jwt.verify(token, JWT_SECRET);
+    next();
+  } catch {
+    return res.status(401).json({ error: 'Invalid or expired session. Please log in again.' });
+  }
 }
 
+// ─── POST /api/admin/login ────────────────────────────────────────────────────
+
+router.post('/login', adminLoginLimiter, (req, res) => {
+  const { password } = req.body;
+  if (!password || typeof password !== 'string') {
+    return res.status(400).json({ error: 'Password required' });
+  }
+
+  const adminPassword = process.env.ADMIN_PASSWORD;
+  if (!adminPassword) {
+    return res.status(500).json({ error: 'Admin not configured' });
+  }
+
+  // Timing-safe comparison to prevent timing attacks
+  let match = false;
+  try {
+    const a = Buffer.from(password);
+    const b = Buffer.from(adminPassword);
+    match = a.length === b.length && crypto.timingSafeEqual(a, b);
+  } catch {
+    match = false;
+  }
+
+  if (!match) {
+    return res.status(401).json({ error: 'Invalid password' });
+  }
+
+  const token = jwt.sign({ role: 'admin' }, JWT_SECRET, { expiresIn: JWT_EXPIRES });
+  res.json({ token, expiresIn: JWT_EXPIRES });
+});
+
+// All routes below require a valid JWT
 router.use(adminAuth);
 
 // ─── GET /api/admin/stats ─────────────────────────────────────────────────────
@@ -83,10 +135,8 @@ router.delete('/games/:id', async (req, res) => {
     );
     if (!game) return res.status(404).json({ error: 'Game not found' });
 
-    // Delete Supabase Storage files (best-effort — don't fail the request if storage errors)
     const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
 
-    // 1. Delete game files folder
     const { data: fileList } = await supabase.storage
       .from('games')
       .list(`files/${game.id}`, { limit: 1000 });
@@ -96,7 +146,6 @@ router.delete('/games/:id', async (req, res) => {
       );
     }
 
-    // 2. Delete thumbnail (stored as full URL → extract storage path)
     if (game.thumbnail?.includes('/storage/v1/object/public/games/')) {
       const storagePath = game.thumbnail.split('/storage/v1/object/public/games/')[1];
       if (storagePath) {
@@ -104,7 +153,6 @@ router.delete('/games/:id', async (req, res) => {
       }
     }
 
-    // Delete from DB (CASCADE removes comments + ratings)
     await pool.query('DELETE FROM games WHERE id = $1', [req.params.id]);
     res.json({ success: true });
   } catch (err) {

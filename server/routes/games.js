@@ -6,6 +6,14 @@ const AdmZip   = require('adm-zip');
 const { v4: uuidv4 } = require('uuid');
 const pool     = require('../db');
 const { uploadFile, deleteFolder, getMimeType } = require('../storage');
+const { uploadLimiter, interactionLimiter } = require('../middleware/rateLimiter');
+
+// ─── Input sanitization helpers ──────────────────────────────────────────────
+
+function sanitizeText(value, maxLen) {
+  if (!value || typeof value !== 'string') return '';
+  return value.trim().slice(0, maxLen);
+}
 
 // ─── Multer ──────────────────────────────────────────────────────────────────
 
@@ -151,9 +159,13 @@ router.get('/', async (req, res) => {
 
 // ─── POST /api/games — upload a new game ─────────────────────────────────────
 
-router.post('/', upload.fields([{ name: 'gameFile', maxCount: 1 }, { name: 'thumbnail', maxCount: 1 }]), async (req, res) => {
-  const { title, description, author, tags } = req.body;
-  if (!title?.trim())     return res.status(400).json({ error: 'Title is required' });
+router.post('/', uploadLimiter, upload.fields([{ name: 'gameFile', maxCount: 1 }, { name: 'thumbnail', maxCount: 1 }]), async (req, res) => {
+  const title       = sanitizeText(req.body.title, 100);
+  const description = sanitizeText(req.body.description, 500);
+  const author      = sanitizeText(req.body.author, 80);
+  const tags        = sanitizeText(req.body.tags, 200);
+
+  if (!title) return res.status(400).json({ error: 'Title is required' });
   if (!req.files?.gameFile) return res.status(400).json({ error: 'A game file (.html or .zip) is required' });
 
   const gameFile = req.files.gameFile[0];
@@ -176,13 +188,13 @@ router.post('/', upload.fields([{ name: 'gameFile', maxCount: 1 }, { name: 'thum
     }
 
     const tagsArray = tags
-      ? tags.split(',').map(t => t.trim()).filter(Boolean)
+      ? tags.split(',').map(t => t.trim()).filter(Boolean).slice(0, 10)
       : [];
 
     await pool.query(
       `INSERT INTO games (id, title, description, author, tags, thumbnail, file_type, file_url)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
-      [id, title.trim(), description || '', author || '', JSON.stringify(tagsArray), thumbnailUrl, ext.slice(1), fileUrl]
+      [id, title, description, author, JSON.stringify(tagsArray), thumbnailUrl, ext.slice(1), fileUrl]
     );
 
     const { rows: [game] } = await pool.query(
@@ -192,7 +204,7 @@ router.post('/', upload.fields([{ name: 'gameFile', maxCount: 1 }, { name: 'thum
   } catch (err) {
     await deleteFolder(`files/${id}`).catch(() => {});
     console.error('Error uploading game:', err);
-    res.status(500).json({ error: err.message || 'Failed to upload game' });
+    res.status(500).json({ error: 'Failed to upload game' });
   }
 });
 
@@ -227,7 +239,7 @@ router.get('/:id/play', async (req, res) => {
 
 // ─── POST /api/games/:id/like ─────────────────────────────────────────────────
 
-router.post('/:id/like', async (req, res) => {
+router.post('/:id/like', interactionLimiter, async (req, res) => {
   try {
     const { rows: [updated] } = await pool.query(
       'UPDATE games SET likes = likes + 1 WHERE id = $1 RETURNING likes',
@@ -259,7 +271,7 @@ router.patch('/:id/increment', async (req, res) => {
 
 // ─── POST /api/games/:id/rate ─────────────────────────────────────────────────
 
-router.post('/:id/rate', async (req, res) => {
+router.post('/:id/rate', interactionLimiter, async (req, res) => {
   try {
     const rating = parseInt(req.body.rating);
     if (!rating || rating < 1 || rating > 5)
@@ -319,17 +331,18 @@ router.get('/:id/comments', async (req, res) => {
 
 // ─── POST /api/games/:id/comments ────────────────────────────────────────────
 
-router.post('/:id/comments', async (req, res) => {
+router.post('/:id/comments', interactionLimiter, async (req, res) => {
   try {
     const { rows: [game] } = await pool.query('SELECT id FROM games WHERE id = $1', [req.params.id]);
     if (!game) return res.status(404).json({ error: 'Game not found' });
 
-    const { author_name, content } = req.body;
-    if (!content?.trim()) return res.status(400).json({ error: 'Comment content is required' });
+    const content     = sanitizeText(req.body.content, 1000);
+    const author_name = sanitizeText(req.body.author_name, 80) || 'Anonymous';
+    if (!content) return res.status(400).json({ error: 'Comment content is required' });
 
     const { rows: [comment] } = await pool.query(
       'INSERT INTO comments (game_id, author_name, content) VALUES ($1,$2,$3) RETURNING *',
-      [req.params.id, (author_name || 'Anonymous').trim(), content.trim()]
+      [req.params.id, author_name, content]
     );
     res.status(201).json(comment);
   } catch (err) {

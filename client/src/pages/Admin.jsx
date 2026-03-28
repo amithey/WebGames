@@ -1,52 +1,81 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 
+function getToken() {
+  return sessionStorage.getItem('admin_token');
+}
+
+function authHeaders() {
+  const token = getToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 export default function Admin() {
-  const [password, setPassword] = useState(localStorage.getItem('admin_pw') || '');
-  const [isAuthorized, setIsAuthorized] = useState(false);
+  const [password, setPassword] = useState('');
+  const [isAuthorized, setIsAuthorized] = useState(!!getToken());
   const [stats, setStats] = useState(null);
   const [games, setGames] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const fetchAdminData = useCallback(async (pw) => {
+  const fetchAdminData = useCallback(async () => {
     setLoading(true);
     setError('');
-    const headers = { 'x-admin-password': pw };
     try {
       const [statsRes, gamesRes] = await Promise.all([
-        axios.get('/api/admin/stats', { headers }),
-        axios.get('/api/admin/games', { headers })
+        axios.get('/api/admin/stats', { headers: authHeaders() }),
+        axios.get('/api/admin/games', { headers: authHeaders() })
       ]);
       setStats(statsRes.data);
       setGames(gamesRes.data);
       setIsAuthorized(true);
-      localStorage.setItem('admin_pw', pw);
     } catch (err) {
       console.error(err);
-      setError(err.response?.status === 401 ? 'Invalid Admin Password' : 'Failed to fetch admin data');
-      setIsAuthorized(false);
+      if (err.response?.status === 401) {
+        sessionStorage.removeItem('admin_token');
+        setIsAuthorized(false);
+        setError('Session expired. Please log in again.');
+      } else {
+        setError('Failed to fetch admin data');
+      }
     }
     setLoading(false);
   }, []);
 
   useEffect(() => {
-    if (password) {
-      fetchAdminData(password);
+    if (isAuthorized) {
+      fetchAdminData();
     }
-  }, [fetchAdminData, password]);
+  }, [isAuthorized, fetchAdminData]);
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    fetchAdminData(password);
+    setLoading(true);
+    setError('');
+    try {
+      const res = await axios.post('/api/admin/login', { password });
+      sessionStorage.setItem('admin_token', res.data.token);
+      setPassword('');
+      setIsAuthorized(true);
+    } catch (err) {
+      setError(err.response?.status === 401 ? 'Invalid Admin Password' : 'Login failed');
+    }
+    setLoading(false);
+  };
+
+  const handleLogout = () => {
+    sessionStorage.removeItem('admin_token');
+    setIsAuthorized(false);
+    setStats(null);
+    setGames([]);
   };
 
   const toggleFeatured = async (id) => {
     try {
-      const headers = { 'x-admin-password': password };
-      const res = await axios.patch(`/api/admin/games/${id}/feature`, {}, { headers });
+      const res = await axios.patch(`/api/admin/games/${id}/feature`, {}, { headers: authHeaders() });
       setGames(prev => prev.map(g => g.id === id ? { ...g, featured: res.data.featured } : g));
     } catch (err) {
+      if (err.response?.status === 401) { handleLogout(); return; }
       alert('Failed to toggle featured status');
     }
   };
@@ -54,13 +83,12 @@ export default function Admin() {
   const deleteGame = async (id, title) => {
     if (!window.confirm(`Are you sure you want to delete "${title}"? This cannot be undone.`)) return;
     try {
-      const headers = { 'x-admin-password': password };
-      await axios.delete(`/api/admin/games/${id}`, { headers });
+      await axios.delete(`/api/admin/games/${id}`, { headers: authHeaders() });
       setGames(prev => prev.filter(g => g.id !== id));
-      // Refresh stats
-      const statsRes = await axios.get('/api/admin/stats', { headers });
+      const statsRes = await axios.get('/api/admin/stats', { headers: authHeaders() });
       setStats(statsRes.data);
     } catch (err) {
+      if (err.response?.status === 401) { handleLogout(); return; }
       alert('Failed to delete game');
     }
   };
@@ -97,8 +125,8 @@ export default function Admin() {
           <h1 className="text-3xl font-extrabold text-white mb-2">Admin Dashboard</h1>
           <p className="text-slate-400">Manage games and view platform statistics.</p>
         </div>
-        <button 
-          onClick={() => { localStorage.removeItem('admin_pw'); setIsAuthorized(false); setPassword(''); }}
+        <button
+          onClick={handleLogout}
           className="btn-secondary text-xs px-4 py-2"
         >
           Logout
@@ -176,7 +204,7 @@ export default function Admin() {
                     <div className="text-[10px] text-slate-500">{game.ratingCount} ratings</div>
                   </td>
                   <td className="px-6 py-4">
-                    <button 
+                    <button
                       onClick={() => toggleFeatured(game.id)}
                       className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${game.featured ? 'bg-yellow-500' : 'bg-[#1e1e3f]'}`}
                     >
@@ -187,7 +215,7 @@ export default function Admin() {
                     {new Date(game.createdAt).toLocaleDateString()}
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <button 
+                    <button
                       onClick={() => deleteGame(game.id, game.title)}
                       className="p-2 text-slate-500 hover:text-red-500 transition-colors"
                       title="Delete Game"
