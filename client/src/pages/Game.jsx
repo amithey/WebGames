@@ -414,9 +414,10 @@ export default function Game() {
           if (res.data.fileUrl) {
             const htmlRes = await fetch(res.data.fileUrl);
             let html = await htmlRes.text();
-            // Inject a script that prevents browser shortcuts (Quick Find, scroll)
-            // for common game keys. This runs inside the iframe.
-            const preventKeys = `<script>document.addEventListener('keydown',function(e){var k=e.key;if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' ','w','W','s','S','a','A','d','D'].indexOf(k)!==-1){e.preventDefault();}},false);<\/script>`;
+            // Inject a script that prevents browser shortcuts (Firefox Quick Find,
+            // scroll, etc.) for game keys. Uses preventDefault on keydown+keypress
+            // in bubble phase so the game's own handlers still receive the events.
+            const preventKeys = `<script>(function(){var keys={ArrowUp:1,ArrowDown:1,ArrowLeft:1,ArrowRight:1,' ':1,w:1,W:1,s:1,S:1,a:1,A:1,d:1,D:1,'/':1};function block(e){if(keys[e.key])e.preventDefault();}document.addEventListener('keydown',block,false);document.addEventListener('keypress',block,false);window.addEventListener('keydown',block,false);window.addEventListener('keypress',block,false);})();<\/script>`;
             if (html.includes('</head>')) {
               html = html.replace('</head>', preventKeys + '</head>');
             } else {
