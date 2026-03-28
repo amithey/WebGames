@@ -413,7 +413,15 @@ export default function Game() {
           // so using src= directly won't render the game. srcdoc bypasses this.
           if (res.data.fileUrl) {
             const htmlRes = await fetch(res.data.fileUrl);
-            const html = await htmlRes.text();
+            let html = await htmlRes.text();
+            // Inject a script that prevents browser shortcuts (Quick Find, scroll)
+            // for common game keys. This runs inside the iframe.
+            const preventKeys = `<script>document.addEventListener('keydown',function(e){var k=e.key;if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' ','w','W','s','S','a','A','d','D'].indexOf(k)!==-1){e.preventDefault();}},false);<\/script>`;
+            if (html.includes('</head>')) {
+              html = html.replace('</head>', preventKeys + '</head>');
+            } else {
+              html = preventKeys + html;
+            }
             if (!cancelled) setGameHtml(html);
           }
         }
