@@ -605,7 +605,7 @@ export default function Game() {
         </div>
 
         {/* Loading overlay */}
-        {iframeLoading && (
+        {(!gameBlobUrl || iframeLoading) && (
           <div className="absolute inset-0 top-[41px] flex items-center justify-center bg-[#07070f] z-10">
             <div className="flex flex-col items-center gap-4">
               <div className="w-12 h-12 border-4 border-[#1e1e3f] border-t-purple-500 rounded-full animate-spin" />
@@ -614,21 +614,23 @@ export default function Game() {
           </div>
         )}
 
-        <iframe
-          ref={iframeRef}
-          src={gameBlobUrl || undefined}
-          title={game.title}
-          className="w-full"
-          style={{
-            minHeight: fullscreen ? '100vh' : '600px',
-            height: fullscreen ? '100vh' : '65vh',
-            display: 'block',
-            border: 'none',
-          }}
-          sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-pointer-lock allow-popups"
-          allowFullScreen
-          onLoad={() => setIframeLoading(false)}
-        />
+        {gameBlobUrl && (
+          <iframe
+            ref={iframeRef}
+            src={gameBlobUrl}
+            title={game.title}
+            className="w-full"
+            style={{
+              minHeight: fullscreen ? '100vh' : '600px',
+              height: fullscreen ? '100vh' : '65vh',
+              display: 'block',
+              border: 'none',
+            }}
+            sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-pointer-lock allow-popups"
+            allowFullScreen
+            onLoad={() => setIframeLoading(false)}
+          />
+        )}
       </div>
 
       {/* Description */}
