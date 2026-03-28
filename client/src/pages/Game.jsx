@@ -361,7 +361,7 @@ export default function Game() {
   const [likes, setLikes] = useState(0);
   const [liked, setLiked] = useState(false);
   const [liking, setLiking] = useState(false);
-  const [gameHtml, setGameHtml] = useState(null);
+  const [gameSrc, setGameSrc] = useState(null);
   const [iframeFocused, setIframeFocused] = useState(false);
 
   // Block game-related keys on the parent page to prevent Quick Find / scroll
@@ -408,22 +408,20 @@ export default function Game() {
           setLoading(false);
           trackRecentlyPlayed(res.data);
 
-          // Fetch game HTML so we can inject it via srcdoc.
-          // Supabase Storage serves .html as text/plain with a restrictive CSP,
-          // so using src= directly won't render the game. srcdoc bypasses this.
+          // Fetch game HTML → inject key-block script → serve via blob URL.
+          // Blob URLs create a real browsing context where preventDefault
+          // reliably stops Firefox Quick Find (unlike srcdoc).
           if (res.data.fileUrl) {
             const htmlRes = await fetch(res.data.fileUrl);
             let html = await htmlRes.text();
-            // Inject a script that prevents browser shortcuts (Firefox Quick Find,
-            // scroll, etc.) for game keys. Uses preventDefault on keydown+keypress
-            // in bubble phase so the game's own handlers still receive the events.
-            const preventKeys = `<script>(function(){var keys={ArrowUp:1,ArrowDown:1,ArrowLeft:1,ArrowRight:1,' ':1,w:1,W:1,s:1,S:1,a:1,A:1,d:1,D:1,'/':1};function block(e){if(keys[e.key])e.preventDefault();}document.addEventListener('keydown',block,false);document.addEventListener('keypress',block,false);window.addEventListener('keydown',block,false);window.addEventListener('keypress',block,false);})();<\/script>`;
+            const preventKeys = `<script>(function(){var g={ArrowUp:1,ArrowDown:1,ArrowLeft:1,ArrowRight:1,' ':1,w:1,W:1,s:1,S:1,a:1,A:1,d:1,D:1,'/':1,"'":1};function block(e){if(g[e.key]&&!e.ctrlKey&&!e.altKey&&!e.metaKey)e.preventDefault();}['keydown','keypress'].forEach(function(t){document.addEventListener(t,block,true);window.addEventListener(t,block,true);});})();<\/script>`;
             if (html.includes('</head>')) {
               html = html.replace('</head>', preventKeys + '</head>');
             } else {
               html = preventKeys + html;
             }
-            if (!cancelled) setGameHtml(html);
+            const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+            if (!cancelled) setGameSrc(URL.createObjectURL(blob));
           }
         }
         axios.patch(`/api/games/${id}/increment`).catch(() => {});
@@ -436,7 +434,10 @@ export default function Game() {
     }
 
     loadGame();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+      setGameSrc(prev => { if (prev) URL.revokeObjectURL(prev); return null; });
+    };
   }, [id]);
 
   async function handleLike() {
@@ -645,7 +646,7 @@ export default function Game() {
         </div>
 
         {/* Loading overlay */}
-        {(!gameHtml || iframeLoading) && (
+        {(!gameSrc || iframeLoading) && (
           <div className="absolute inset-0 top-[41px] flex items-center justify-center bg-[#07070f] z-10">
             <div className="flex flex-col items-center gap-4">
               <div className="w-12 h-12 border-4 border-[#1e1e3f] border-t-purple-500 rounded-full animate-spin" />
@@ -654,10 +655,10 @@ export default function Game() {
           </div>
         )}
 
-        {gameHtml && (
+        {gameSrc && (
           <iframe
             ref={iframeRef}
-            srcDoc={gameHtml}
+            src={gameSrc}
             title={game.title}
             className="w-full"
             style={{
@@ -673,7 +674,7 @@ export default function Game() {
         )}
 
         {/* Click-to-play overlay — shown when iframe loses focus */}
-        {gameHtml && !iframeLoading && !iframeFocused && (
+        {gameSrc && !iframeLoading && !iframeFocused && (
           <div
             onClick={focusIframe}
             className="absolute inset-0 top-[41px] flex items-center justify-center bg-black/40 z-10 cursor-pointer transition-opacity"
