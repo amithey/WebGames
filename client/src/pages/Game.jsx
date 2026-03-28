@@ -361,6 +361,7 @@ export default function Game() {
   const [likes, setLikes] = useState(0);
   const [liked, setLiked] = useState(false);
   const [liking, setLiking] = useState(false);
+  const [gameBlobUrl, setGameBlobUrl] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -374,6 +375,20 @@ export default function Game() {
           setLiked(localStorage.getItem(`liked_${id}`) === '1');
           setLoading(false);
           trackRecentlyPlayed(res.data);
+
+          // Fetch the game HTML and create a blob URL so the iframe
+          // renders it as HTML regardless of the server's Content-Type.
+          if (res.data.fileUrl) {
+            try {
+              const htmlRes = await fetch(res.data.fileUrl);
+              const html = await htmlRes.text();
+              const blob = new Blob([html], { type: 'text/html' });
+              if (!cancelled) setGameBlobUrl(URL.createObjectURL(blob));
+            } catch {
+              // Fallback: use the raw URL (may render as text if Content-Type is wrong)
+              if (!cancelled) setGameBlobUrl(res.data.fileUrl);
+            }
+          }
         }
         axios.patch(`/api/games/${id}/increment`).catch(() => {});
       } catch (err) {
@@ -385,7 +400,10 @@ export default function Game() {
     }
 
     loadGame();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+      setGameBlobUrl(prev => { if (prev?.startsWith('blob:')) URL.revokeObjectURL(prev); return null; });
+    };
   }, [id]);
 
   async function handleLike() {
@@ -598,7 +616,7 @@ export default function Game() {
 
         <iframe
           ref={iframeRef}
-          src={game.fileUrl}
+          src={gameBlobUrl || undefined}
           title={game.title}
           className="w-full"
           style={{
