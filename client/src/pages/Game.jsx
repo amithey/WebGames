@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 
 function trackRecentlyPlayed(game) {
@@ -598,7 +598,7 @@ export default function Game() {
 
         <iframe
           ref={iframeRef}
-          src={`/api/games/${id}/play`}
+          src={game.fileUrl}
           title={game.title}
           className="w-full"
           style={{
