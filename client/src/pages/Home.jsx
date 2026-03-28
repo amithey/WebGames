@@ -303,7 +303,7 @@ export default function Home() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 page-transition">
       {/* Hero */}
-      <section className="text-center mb-16 relative py-10">
+      <section className="text-center mb-12 relative py-6">
         <div className="absolute inset-0 hero-glow -z-10" />
         
         <div className="inline-flex items-center gap-2 bg-purple-500/10 border border-purple-500/20 rounded-full px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest text-purple-400 mb-6 animate-pulse">
@@ -320,7 +320,7 @@ export default function Home() {
         </h1>
 
         <p className="text-slate-400 text-lg sm:text-xl max-w-2xl mx-auto mb-10 leading-relaxed font-medium">
-          The ultimate community-driven gaming platform. Discover, play, and share free browser games — no registration required.
+          The ultimate community driven gaming platform. Discover, play, and share free browser games. No registration required.
         </p>
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">

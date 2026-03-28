@@ -30,60 +30,61 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    background: #7c3aed;
+    background: #8b5cf6;
     border-radius: 4px;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: #a855f7;
+    background: #a78bfa;
   }
 }
 
 @layer components {
   .btn-primary {
-    @apply bg-purple-600 hover:bg-purple-500 text-white font-semibold px-6 py-2.5 rounded-lg transition-all duration-200 shadow-lg hover:shadow-purple-500/25 active:scale-95;
+    @apply bg-violet-500 hover:bg-violet-400 text-white font-semibold px-6 py-2.5 rounded-lg transition-all duration-200 shadow-lg hover:shadow-violet-500/25 active:scale-95;
     font-family: 'Orbitron', sans-serif;
     font-size: 0.85rem;
     letter-spacing: 0.05em;
   }
 
   .btn-secondary {
-    @apply bg-transparent border border-purple-500 text-purple-400 hover:bg-purple-500/10 font-semibold px-6 py-2.5 rounded-lg transition-all duration-200 active:scale-95;
+    @apply bg-transparent border border-violet-400 text-violet-400 hover:bg-violet-500/10 font-semibold px-6 py-2.5 rounded-lg transition-all duration-200 active:scale-95;
     font-family: 'Orbitron', sans-serif;
     font-size: 0.85rem;
     letter-spacing: 0.05em;
   }
 
   .card {
-    @apply bg-[#13132a] border border-[#1e1e3f] rounded-xl overflow-hidden transition-all duration-500 hover:border-purple-500/50 hover:shadow-2xl hover:shadow-purple-500/10 hover:-translate-y-2;
+    @apply bg-[#13132a] border border-[#1e1e3f] rounded-xl overflow-hidden transition-all duration-300 hover:border-violet-500/50 hover:shadow-2xl hover:shadow-violet-500/10 hover:-translate-y-1 hover:scale-[1.02];
   }
 
   .input-field {
-    @apply w-full bg-[#0d0d1a] border border-[#1e1e3f] rounded-lg px-4 py-3 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-colors duration-200;
+    @apply w-full bg-[#0d0d1a] border border-[#1e1e3f] rounded-xl px-4 py-3 text-slate-200 placeholder-slate-500 focus:outline-none focus:border-violet-500/70 focus:ring-2 focus:ring-violet-500/20 transition-all duration-200;
   }
 
   .tag-badge {
-    @apply bg-purple-500/20 text-purple-300 border border-purple-500/30 text-[10px] px-2.5 py-1 rounded-full font-bold uppercase tracking-wider;
+    @apply bg-violet-500/15 text-violet-300 border border-violet-500/25 text-[10px] px-2.5 py-1 rounded-full font-bold uppercase tracking-wider;
   }
 
   .glow-text {
-    text-shadow: 0 0 20px rgba(168, 85, 247, 0.4);
+    text-shadow: 0 0 24px rgba(167, 139, 250, 0.35);
   }
 
   .animated-gradient-text {
     @apply bg-clip-text text-transparent;
-    background-image: linear-gradient(90deg, #a855f7, #ec4899, #06b6d4, #a855f7);
-    background-size: 300% 100%;
-    animation: gradient-flow 6s linear infinite;
+    background-image: linear-gradient(90deg, #c084fc, #f472b6, #38bdf8, #818cf8, #c084fc);
+    background-size: 400% 100%;
+    animation: gradient-flow 8s ease infinite;
   }
 
   @keyframes gradient-flow {
-    0% { background-position: 0% 50%; }
-    100% { background-position: 100% 50%; }
+    0%   { background-position: 0% 50%; }
+    50%  { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
   }
 
   .hero-glow {
-    background: radial-gradient(circle at center, rgba(124, 58, 237, 0.12) 0%, rgba(7, 7, 15, 0) 70%);
+    background: radial-gradient(circle at center, rgba(139, 92, 246, 0.10) 0%, transparent 70%);
   }
 
   .page-transition {
