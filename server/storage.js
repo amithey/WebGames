@@ -1,13 +1,25 @@
 const { createClient } = require('@supabase/supabase-js');
 const path = require('path');
 
-if (!process.env.SUPABASE_URL || !process.env.SUPABASE_ANON_KEY) {
-  console.error('FATAL: SUPABASE_URL or SUPABASE_ANON_KEY is not set');
+// --- Sanitize and Log ---
+const rawUrl = process.env.SUPABASE_URL || '';
+const rawKey = process.env.SUPABASE_ANON_KEY || '';
+
+// Trim and remove trailing slashes from URL
+const supabaseUrl = rawUrl.trim().replace(/\/+$/, '');
+const supabaseKey = rawKey.trim();
+
+if (!supabaseUrl || !supabaseKey) {
+  console.error('FATAL: SUPABASE_URL or SUPABASE_ANON_KEY is not set or empty');
+} else {
+  // Mask the URL for safety: https://abc.supabase.co -> https://***.supabase.co
+  const maskedUrl = supabaseUrl.replace(/^(https?:\/\/)[^.]+/, '$1***');
+  console.log(`[Supabase] Initializing with URL: ${maskedUrl}`);
 }
 
 const supabase = createClient(
-  process.env.SUPABASE_URL || 'https://placeholder.supabase.co',
-  process.env.SUPABASE_ANON_KEY || 'placeholder'
+  supabaseUrl || 'https://placeholder.supabase.co',
+  supabaseKey || 'placeholder'
 );
 
 const BUCKET = 'games';
@@ -73,4 +85,4 @@ async function deleteFolder(prefix) {
   }
 }
 
-module.exports = { uploadFile, deleteFolder, getMimeType };
+module.exports = { supabase, uploadFile, deleteFolder, getMimeType };

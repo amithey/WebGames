@@ -3,7 +3,7 @@ const router    = express.Router();
 const crypto    = require('crypto');
 const jwt       = require('jsonwebtoken');
 const pool      = require('../db');
-const { createClient } = require('@supabase/supabase-js');
+const { supabase, uploadFile, deleteFolder, getMimeType } = require('../storage');
 const { adminLoginLimiter } = require('../middleware/rateLimiter');
 
 // ─── JWT helpers ──────────────────────────────────────────────────────────────
@@ -134,8 +134,6 @@ router.delete('/games/:id', async (req, res) => {
       'SELECT id, thumbnail FROM games WHERE id = $1', [req.params.id]
     );
     if (!game) return res.status(404).json({ error: 'Game not found' });
-
-    const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
 
     const { data: fileList } = await supabase.storage
       .from('games')
