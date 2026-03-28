@@ -10,13 +10,19 @@ const app = express();
 
 // ── CORS (must be FIRST, before helmet and everything else) ─────────────────
 const FRONTEND_ORIGIN = 'https://web-games-mauve.vercel.app';
+const allowedOrigins = [
+  FRONTEND_ORIGIN,
+  'http://localhost:5173',
+  'http://localhost:3000',
+];
+// Also allow FRONTEND_URL env var (trimmed — Vercel sometimes adds trailing newlines)
+if (process.env.FRONTEND_URL) {
+  const feUrl = process.env.FRONTEND_URL.trim().replace(/\/+$/, '');
+  if (feUrl && !allowedOrigins.includes(feUrl)) allowedOrigins.push(feUrl);
+}
 
 app.use(cors({
-  origin: [
-    FRONTEND_ORIGIN,
-    'http://localhost:5173',
-    'http://localhost:3000',
-  ],
+  origin: allowedOrigins,
   methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
@@ -84,7 +90,7 @@ app.use((err, req, res, _next) => {
   console.error('Unhandled error:', err);
   // Ensure CORS headers are present on error responses
   const origin = req.headers.origin;
-  if (origin === FRONTEND_ORIGIN || origin === 'http://localhost:5173' || origin === 'http://localhost:3000') {
+  if (origin && allowedOrigins.includes(origin)) {
     res.set('Access-Control-Allow-Origin', origin);
     res.set('Access-Control-Allow-Credentials', 'true');
   }
