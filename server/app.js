@@ -8,6 +8,9 @@ const { generalLimiter } = require('./middleware/rateLimiter');
 
 const app = express();
 
+// ── Trust proxy (required behind Vercel/CDN — fixes express-rate-limit) ─────
+app.set('trust proxy', 1);
+
 // ── CORS (must be FIRST, before helmet and everything else) ─────────────────
 const FRONTEND_ORIGIN = 'https://web-games-mauve.vercel.app';
 const allowedOrigins = [

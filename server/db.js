@@ -1,6 +1,7 @@
 const { Pool } = require('pg');
 
-const dbUrl = (process.env.DATABASE_URL || '').trim();
+// Strip all whitespace including embedded newlines/carriage returns
+const dbUrl = (process.env.DATABASE_URL || '').replace(/\s+/g, '');
 
 if (!dbUrl) {
   console.error('FATAL: DATABASE_URL is not set or empty');

@@ -2,8 +2,8 @@ const { createClient } = require('@supabase/supabase-js');
 const path = require('path');
 
 // --- Sanitize and Log ---
-const rawUrl = (process.env.SUPABASE_URL || '').trim().replace(/\/+$/, '');
-const rawKey = (process.env.SUPABASE_ANON_KEY || '').trim();
+const rawUrl = (process.env.SUPABASE_URL || '').replace(/\s+/g, '').replace(/\/+$/, '');
+const rawKey = (process.env.SUPABASE_ANON_KEY || '').replace(/\s+/g, '');
 
 // Validate URL format before passing to createClient
 let supabaseUrl = rawUrl;
