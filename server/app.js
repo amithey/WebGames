@@ -1,23 +1,26 @@
 require('dotenv').config();
 
-// ── Validate required environment variables ──────────────────────────────────
-const REQUIRED_ENV = ['DATABASE_URL', 'SUPABASE_URL', 'SUPABASE_ANON_KEY'];
-for (const key of REQUIRED_ENV) {
-  if (!process.env[key]) {
-    console.error(`FATAL: Missing required environment variable: ${key}`);
-  }
-}
-
 const express = require('express');
 const cors    = require('cors');
 const helmet  = require('helmet');
 
-const gamesRouter    = require('./routes/games');
-const creatorsRouter = require('./routes/creators');
-const adminRouter    = require('./routes/admin');
 const { generalLimiter } = require('./middleware/rateLimiter');
 
 const app = express();
+
+// ── CORS (must be FIRST, before helmet and everything else) ─────────────────
+const FRONTEND_ORIGIN = 'https://web-games-mauve.vercel.app';
+
+app.use(cors({
+  origin: [
+    FRONTEND_ORIGIN,
+    'http://localhost:5173',
+    'http://localhost:3000',
+  ],
+  methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
+}));
 
 // ── Security headers (helmet) ─────────────────────────────────────────────────
 app.use(helmet({
@@ -27,51 +30,8 @@ app.use(helmet({
       frameAncestors:  ["'none'"],
     },
   },
-  // Allow cross-origin fetches from the frontend domain
   crossOriginResourcePolicy: { policy: 'cross-origin' },
-  // COEP would break game iframes — leave disabled
   crossOriginEmbedderPolicy: false,
-}));
-
-// ── CORS ──────────────────────────────────────────────────────────────────────
-const allowedOrigins = [
-  'http://localhost:5173',
-  'http://localhost:3000',
-];
-
-if (process.env.FRONTEND_URL) {
-  // Normalize by removing trailing slash
-  const feUrl = process.env.FRONTEND_URL.replace(/\/$/, '');
-  allowedOrigins.push(feUrl);
-  // Also push the .vercel.app variant if it's missing https://
-  if (!feUrl.startsWith('http')) {
-    allowedOrigins.push(`https://${feUrl}`);
-  }
-}
-
-// In production, if FRONTEND_URL is not set, we might want to be more permissive 
-// or at least log a very clear warning.
-if (!process.env.FRONTEND_URL && process.env.NODE_ENV === 'production') {
-  console.warn('⚠️  FRONTEND_URL not set in production! CORS might block requests from your frontend.');
-}
-
-app.use(cors({
-  origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps or curl)
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin) || allowedOrigins.includes(origin.replace(/\/$/, ''))) {
-      return callback(null, true);
-    }
-    // For development/debugging, you might want to allow all vercel.app domains:
-    if (origin.endsWith('.vercel.app')) {
-      return callback(null, true);
-    }
-    console.warn(`CORS blocked request from origin: ${origin}`);
-    return callback(new Error('Not allowed by CORS'));
-  },
-  methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true,
 }));
 
 // ── Body parsing with explicit size limits ────────────────────────────────────
@@ -81,18 +41,36 @@ app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 // ── Global rate limiting ──────────────────────────────────────────────────────
 app.use(generalLimiter);
 
-// ── Routes ────────────────────────────────────────────────────────────────────
-app.use('/api/games',    gamesRouter);
-app.use('/api/creators', creatorsRouter);
-app.use('/api/admin',    adminRouter);
-
-// ── Health check ──────────────────────────────────────────────────────────────
+// ── Health check (before routes so it always works) ──────────────────────────
 app.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
+
+// ── Routes (lazy-loaded to catch require-time crashes) ───────────────────────
+try {
+  const gamesRouter    = require('./routes/games');
+  const creatorsRouter = require('./routes/creators');
+  const adminRouter    = require('./routes/admin');
+
+  app.use('/api/games',    gamesRouter);
+  app.use('/api/creators', creatorsRouter);
+  app.use('/api/admin',    adminRouter);
+} catch (err) {
+  console.error('Failed to load routes:', err);
+  // If routes fail to load, return 500 with info on all API endpoints
+  app.use('/api', (_req, res) => {
+    res.status(500).json({ error: 'Server initialization failed', detail: err.message });
+  });
+}
 
 // ── Global error handler (never leak stack traces) ────────────────────────────
 // eslint-disable-next-line no-unused-vars
-app.use((err, _req, res, _next) => {
+app.use((err, req, res, _next) => {
   console.error('Unhandled error:', err);
+  // Ensure CORS headers are present on error responses
+  const origin = req.headers.origin;
+  if (origin === FRONTEND_ORIGIN || origin === 'http://localhost:5173' || origin === 'http://localhost:3000') {
+    res.set('Access-Control-Allow-Origin', origin);
+    res.set('Access-Control-Allow-Credentials', 'true');
+  }
   res.status(err.status || 500).json({ error: 'An unexpected error occurred' });
 });
 
