@@ -1,5 +1,13 @@
 require('dotenv').config();
 
+// ── Validate required environment variables ──────────────────────────────────
+const REQUIRED_ENV = ['DATABASE_URL', 'SUPABASE_URL', 'SUPABASE_ANON_KEY'];
+for (const key of REQUIRED_ENV) {
+  if (!process.env[key]) {
+    console.error(`FATAL: Missing required environment variable: ${key}`);
+  }
+}
+
 const express = require('express');
 const cors    = require('cors');
 const helmet  = require('helmet');
@@ -26,16 +34,41 @@ app.use(helmet({
 }));
 
 // ── CORS ──────────────────────────────────────────────────────────────────────
-const allowedOrigins = process.env.FRONTEND_URL
-  ? [process.env.FRONTEND_URL, 'http://localhost:5173']
-  : ['http://localhost:5173'];
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:3000',
+];
 
-if (!process.env.FRONTEND_URL) {
-  console.warn('⚠️  FRONTEND_URL not set — CORS restricted to localhost only. Set it in production.');
+if (process.env.FRONTEND_URL) {
+  // Normalize by removing trailing slash
+  const feUrl = process.env.FRONTEND_URL.replace(/\/$/, '');
+  allowedOrigins.push(feUrl);
+  // Also push the .vercel.app variant if it's missing https://
+  if (!feUrl.startsWith('http')) {
+    allowedOrigins.push(`https://${feUrl}`);
+  }
+}
+
+// In production, if FRONTEND_URL is not set, we might want to be more permissive 
+// or at least log a very clear warning.
+if (!process.env.FRONTEND_URL && process.env.NODE_ENV === 'production') {
+  console.warn('⚠️  FRONTEND_URL not set in production! CORS might block requests from your frontend.');
 }
 
 app.use(cors({
-  origin: allowedOrigins,
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps or curl)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin) || allowedOrigins.includes(origin.replace(/\/$/, ''))) {
+      return callback(null, true);
+    }
+    // For development/debugging, you might want to allow all vercel.app domains:
+    if (origin.endsWith('.vercel.app')) {
+      return callback(null, true);
+    }
+    console.warn(`CORS blocked request from origin: ${origin}`);
+    return callback(new Error('Not allowed by CORS'));
+  },
   methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,

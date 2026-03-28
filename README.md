@@ -1,192 +1,124 @@
-# WebGames
+# 🎮 WebGames
 
-A community platform for uploading, sharing, and playing browser-based games built with AI tools.
+A modern, high-performance community platform for uploading, sharing, and playing browser-based games. Built with a focus on speed, security, and developer experience.
 
-![WebGames Screenshot](https://via.placeholder.com/900x450.png?text=WebGames+Screenshot)
-
----
-
-## Features
-
-### Phase 1 — Core Platform
-- Upload HTML/ZIP games with title, description, author, and tags
-- Browse all games on the home page
-- Play games in a dedicated game page
-- REST API (Express) backed by Supabase PostgreSQL
-
-### Phase 2 — Discovery
-- Like games (persistent, per-session)
-- Filter games by tag
-- Sort by newest, most played, or most liked
-
-### Phase 3 — Community
-- Comment on games (name + message)
-- Creator profile pages (all games by one author)
-- Leaderboard (top games by play count / likes)
-- Social sharing (copy link / open graph)
-- Fullscreen play mode
-
-### Phase 4 — Cloud Infrastructure
-- PostgreSQL database via Supabase
-- Game files and thumbnails stored in Supabase Storage
-- Vercel deployment (frontend + backend as separate projects)
-
-### Phase 5 — Admin & Polish
-- Admin panel to delete games
-- Thumbnail image upload per game
-- Support for ZIP games (multi-file HTML projects)
+![WebGames Screenshot](https://via.placeholder.com/1200x600.png?text=WebGames+Platform+Preview)
 
 ---
 
-## Tech Stack
+## 🛡️ Security Hardening
+
+The project has recently undergone a comprehensive security audit and hardening process to ensure a safe environment for both creators and players:
+
+- **JWT Authentication**: Secure admin dashboard access using **JSON Web Tokens**. Features include timing-safe password comparisons to prevent brute-force and timing attacks.
+- **Layered Rate Limiting**: Protection against DDoS and abuse using `express-rate-limit` with specialized tiers:
+  - **General API**: 200 requests per 15 minutes.
+  - **Admin Login**: 10 attempts per 15 minutes (Brute-force protection).
+  - **Game Uploads**: 10 uploads per hour per IP.
+  - **Interactions**: 30 requests per minute for likes/ratings/comments.
+- **Helmet.js Integration**: Implementation of security-focused HTTP headers, including a strict **Content Security Policy (CSP)** and Cross-Origin Resource Policy (CORP).
+- **CORS Protection**: Strict origin-based access control, restricting API access to the verified frontend domain.
+- **Payload Validation**: Explicit body-size limits (1MB) on JSON and URL-encoded data to prevent memory exhaustion attacks.
+
+---
+
+## ✨ Key Features
+
+- **Game Discovery**: Browse, filter by tags, and sort by popularity, recency, or featured status.
+- **Seamless Playback**: Games run in isolated environments for performance and security.
+- **Creator Dashboard**: Dedicated space for developers to upload HTML/ZIP projects and manage their portfolio.
+- **Engagement**: Community-driven features including star ratings, comments, and a global leaderboard.
+- **Admin Command Center**: A secure portal for moderators to manage content, toggle "Featured" status, and monitor platform-wide analytics.
+
+---
+
+## 🚀 Tech Stack
 
 | Layer | Technology |
 |---|---|
-| Frontend | React 18 + Vite + TailwindCSS |
-| Backend | Node.js + Express |
-| Database | Supabase (PostgreSQL via `pg` driver) |
-| File Storage | Supabase Storage (bucket: `games`) |
-| Deployment | Vercel (frontend + backend as separate projects) |
+| **Frontend** | React 18, Vite, TailwindCSS, Axios |
+| **Backend** | Node.js, Express.js |
+| **Security** | JWT (jsonwebtoken), Helmet, express-rate-limit, bcryptjs |
+| **Database** | Supabase (PostgreSQL via `pg` pool) |
+| **Storage** | Supabase Storage (Blob storage for game assets) |
+| **Deployment** | Vercel (Optimized Monorepo configuration) |
 
 ---
 
-## Project Structure
+## 📂 Project Structure
 
-```
+```text
 WebGames/
 ├── client/                  # React frontend (Vite)
 │   ├── src/
 │   │   ├── pages/           # Home, Game, Upload, Creator, Leaderboard, Admin
-│   │   ├── App.jsx
-│   │   └── main.jsx
-│   ├── vercel.json          # SPA rewrites for Vercel
-│   └── vite.config.js
+│   │   └── main.jsx         # Entry point
+│   └── vercel.json          # SPA routing configuration
 ├── server/                  # Express backend
-│   ├── api/
-│   │   └── index.js         # Vercel serverless entry point
-│   ├── routes/
-│   │   ├── games.js
-│   │   ├── creators.js
-│   │   └── admin.js
-│   ├── app.js               # Express app (no listen — shared entry)
-│   ├── db.js                # Supabase PostgreSQL pool
-│   ├── storage.js           # Supabase Storage helpers
-│   ├── index.js             # Local dev server
-│   └── vercel.json
+│   ├── middleware/          # Security & Rate limiting logic
+│   ├── routes/              # Modular API endpoints (games, creators, admin)
+│   ├── db.js                # Optimized PostgreSQL connection pooling
+│   ├── storage.js           # Supabase Storage integration
+│   └── app.js               # Express application setup
 ├── supabase/
-│   └── schema.sql           # Database schema
-├── .env.example
-└── package.json             # Root scripts (concurrently)
+│   └── schema.sql           # Database structure & migrations
+└── package.json             # Root scripts for local orchestration
 ```
 
 ---
 
-## Local Development
+## 🛠️ Local Development
 
-### Prerequisites
-- Node.js 18+
-- A Supabase project (free tier works)
-
-### 1. Clone and install dependencies
+### 1. Installation
 
 ```bash
-git clone https://github.com/amithey/WebGames.git
-cd WebGames
+# Install root dependencies
 npm install
-cd client && npm install
-cd ../server && npm install
+
+# Install client and server dependencies
+npm run install:all
 ```
 
-### 2. Set up environment variables
+### 2. Environment Setup
 
-```bash
-# Copy the example file into server/
-cp .env.example server/.env
-```
-
-Then edit `server/.env` and fill in:
+Create a `.env` file in the `server/` directory:
 
 ```env
-SUPABASE_URL=https://<your-project>.supabase.co
-SUPABASE_ANON_KEY=<your-anon-key>
-DATABASE_URL=postgresql://postgres:<password>@db.<ref>.supabase.co:5432/postgres
+# Database & API
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_ANON_KEY=your-anon-key
+DATABASE_URL=postgresql://postgres:password@db.ref.supabase.co:5432/postgres
+
+# Security
+JWT_SECRET=your-long-random-secret
+ADMIN_PASSWORD=your-secure-admin-password
 FRONTEND_URL=http://localhost:5173
 ```
 
-For the frontend, `VITE_API_URL` can be left empty in development — Vite's proxy forwards `/api` to `localhost:3001`.
+### 3. Database Initialization
 
-### 3. Set up Supabase (one-time)
+Run the contents of `supabase/schema.sql` in the **Supabase SQL Editor** to create the necessary tables and indexes. Ensure a public storage bucket named `games` is created in the Supabase Dashboard.
 
-**A. Create the database tables**
-1. Go to Supabase Dashboard → SQL Editor → New query
-2. Paste and run the contents of [`supabase/schema.sql`](./supabase/schema.sql)
-
-**B. Create the Storage bucket**
-1. Go to Supabase Dashboard → Storage → New bucket
-2. Name it exactly: `games`
-3. Enable **Public bucket**
-
-### 4. Run
+### 4. Start the Engines
 
 ```bash
-# From the WebGames/ root
+# Run both frontend and backend concurrently
 npm run dev
-# → Frontend: http://localhost:5173
-# → Backend:  http://localhost:3001
 ```
 
 ---
 
-## Production Deployment (Vercel)
+## ☁️ Vercel Deployment
 
-Both the frontend and backend are deployed as **separate Vercel projects** from the same GitHub repo.
+The project is optimized for Vercel's serverless environment.
 
-### Deploy the Backend
-
-1. Vercel → Add New Project → import this repo
-2. Set **Root Directory** to `server/`
-3. Leave Build Command and Output Directory empty
-4. Add environment variables:
-
-| Variable | Value |
-|---|---|
-| `SUPABASE_URL` | Your Supabase project URL |
-| `SUPABASE_ANON_KEY` | Your Supabase anon key |
-| `DATABASE_URL` | Your Supabase PostgreSQL URI |
-| `FRONTEND_URL` | Your frontend Vercel URL (add after frontend deploy) |
-
-### Deploy the Frontend
-
-1. Vercel → Add New Project → import the same repo
-2. Set **Root Directory** to `client/`
-3. Build Command: `npm run build` | Output Directory: `dist`
-4. Add environment variable:
-
-| Variable | Value |
-|---|---|
-| `VITE_API_URL` | Your backend Vercel URL |
-
-### Wire CORS
-After both are deployed, go back to the **backend** project in Vercel and set `FRONTEND_URL` to the frontend URL, then redeploy.
+1. **Backend**: Import the repo, set the root directory to `server/`. Add all `.env` variables listed above. Use the Supabase connection string with `?pgbouncer=true` if using Transaction mode.
+2. **Frontend**: Import the same repo, set the root directory to `client/`. Add `VITE_API_URL` pointing to your backend Vercel URL.
 
 ---
 
-## Environment Variables Reference
+## 📈 Roadmap & Limitations
 
-| Variable | Used In | Description |
-|---|---|---|
-| `SUPABASE_URL` | Backend | Supabase project URL |
-| `SUPABASE_ANON_KEY` | Backend | Supabase public anon key |
-| `DATABASE_URL` | Backend | PostgreSQL connection string |
-| `FRONTEND_URL` | Backend | Allowed CORS origin |
-| `VITE_API_URL` | Frontend | Backend base URL (empty = dev proxy) |
-
----
-
-## Known Limitations
-
-| Limitation | Detail |
-|---|---|
-| **File size** | Vercel Serverless body limit ~4.5 MB — keep game files under 4 MB |
-| **Timeout** | Vercel Hobby tier: 10 s per function invocation |
-| **Cold starts** | First request after inactivity may take 1–2 s |
+- **File Limits**: Vercel Serverless Functions have a ~4.5MB payload limit. Game ZIPs should stay under 4MB.
+- **Stateless Auth**: JWTs are used for admin access, ensuring the backend remains horizontally scalable.
+- **Cold Starts**: Initial requests may experience a 1-2s delay due to Vercel's serverless architecture.

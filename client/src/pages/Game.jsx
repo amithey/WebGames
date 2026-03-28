@@ -332,10 +332,28 @@ function CommentsSection({ gameId }) {
 
 export default function Game() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const iframeRef = useRef(null);
   const containerRef = useRef(null);
 
   const [game, setGame] = useState(null);
+  const isAdmin = !!sessionStorage.getItem('admin_token');
+  const [deleting, setDeleting] = useState(false);
+
+  async function handleDeleteGame() {
+    if (!window.confirm(`Are you sure you want to delete "${game?.title}"? This cannot be undone.`)) return;
+    setDeleting(true);
+    try {
+      await axios.delete(`/api/admin/games/${id}`, {
+        headers: { Authorization: `Bearer ${sessionStorage.getItem('admin_token')}` }
+      });
+      navigate('/', { replace: true });
+    } catch (err) {
+      console.error(err);
+      alert('Failed to delete game. You might need to log in as an admin again.');
+      setDeleting(false);
+    }
+  }
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [iframeLoading, setIframeLoading] = useState(true);
@@ -654,6 +672,14 @@ export default function Game() {
         <Link to="/upload" className="btn-primary inline-flex items-center gap-2">
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+          </svg>
+          Upload Your Game
+        </Link>
+      </div>
+    </div>
+  );
+}
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
           </svg>
           Upload Your Game
         </Link>

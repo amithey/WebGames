@@ -16,10 +16,11 @@ function sanitizeText(value, maxLen) {
 }
 
 // ─── Multer ──────────────────────────────────────────────────────────────────
+// Vercel serverless has a ~4.5 MB body limit; keep multer limit at 4 MB to stay safe.
 
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 20 * 1024 * 1024 },
+  limits: { fileSize: 4 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     if (file.fieldname === 'gameFile') {
       const ext = path.extname(file.originalname).toLowerCase();
@@ -31,6 +32,20 @@ const upload = multer({
     }
   },
 });
+
+/** Multer error handler — returns user-friendly messages for file issues */
+function handleMulterError(err, req, res, next) {
+  if (err instanceof multer.MulterError) {
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(413).json({ error: 'File too large. Maximum size is 4 MB.' });
+    }
+    return res.status(400).json({ error: `Upload error: ${err.message}` });
+  }
+  if (err && err.message) {
+    return res.status(400).json({ error: err.message });
+  }
+  next(err);
+}
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -159,7 +174,7 @@ router.get('/', async (req, res) => {
 
 // ─── POST /api/games — upload a new game ─────────────────────────────────────
 
-router.post('/', uploadLimiter, upload.fields([{ name: 'gameFile', maxCount: 1 }, { name: 'thumbnail', maxCount: 1 }]), async (req, res) => {
+router.post('/', uploadLimiter, upload.fields([{ name: 'gameFile', maxCount: 1 }, { name: 'thumbnail', maxCount: 1 }]), handleMulterError, async (req, res) => {
   const title       = sanitizeText(req.body.title, 100);
   const description = sanitizeText(req.body.description, 500);
   const author      = sanitizeText(req.body.author, 80);
@@ -202,9 +217,11 @@ router.post('/', uploadLimiter, upload.fields([{ name: 'gameFile', maxCount: 1 }
     );
     res.status(201).json(formatGame(game));
   } catch (err) {
-    await deleteFolder(`files/${id}`).catch(() => {});
+    if (id) await deleteFolder(`files/${id}`).catch(() => {});
     console.error('Error uploading game:', err);
-    res.status(500).json({ error: 'Failed to upload game' });
+    // Return specific error message if available, otherwise generic
+    const message = err.message || 'Failed to upload game';
+    res.status(500).json({ error: message });
   }
 });
 

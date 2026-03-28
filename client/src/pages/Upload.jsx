@@ -162,7 +162,19 @@ export default function Upload() {
       await new Promise(r => setTimeout(r, 600));
       navigate(`/games/${res.data.id}`);
     } catch (err) {
-      const msg = err.response?.data?.error || 'Upload failed. Please try again.';
+      let msg;
+      console.error('Upload Error Details:', err);
+      if (err.response?.data?.error) {
+        msg = err.response.data.error;
+      } else if (err.response?.status === 413) {
+        msg = 'File too large. Maximum size is 4 MB.';
+      } else if (err.response?.status === 500) {
+        msg = 'Server error. Something went wrong on the backend. Please try again.';
+      } else if (err.code === 'ERR_NETWORK' || !err.response) {
+        msg = 'Network error or CORS issue. Please check your internet connection and ensure the server allows requests from this domain.';
+      } else {
+        msg = err.message || 'Upload failed. Please try again.';
+      }
       setServerError(msg);
       setUploadStage('');
       setUploadProgress(0);
@@ -340,7 +352,7 @@ export default function Upload() {
             <FileDropZone
               accept=".html,.zip"
               label="Drop your game file here"
-              hint=".html or .zip (max 100MB), and ZIP must contain index.html"
+              hint=".html or .zip (max 4MB), ZIP must contain index.html"
               icon={
                 <svg className="w-6 h-6 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
