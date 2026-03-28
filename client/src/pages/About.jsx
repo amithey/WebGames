@@ -37,7 +37,7 @@ const FEATURES = [
       </svg>
     ),
     title: 'Play Anything',
-    desc: 'From simple puzzles to full arcade games — everything runs in your browser, no downloads.',
+    desc: 'From simple puzzles to full arcade games, everything runs in your browser, no downloads.',
     color: 'from-cyan-500 to-blue-600',
     glow: 'rgba(6,182,212,0.3)',
   },
@@ -91,7 +91,7 @@ const STEPS = [
   {
     step: '01',
     title: 'Build Your Game',
-    desc: 'Create any browser game using HTML, CSS, JavaScript — or export from your favourite game engine as a web build.',
+    desc: 'Create any browser game using HTML, CSS, JavaScript, or export from your favourite game engine as a web build.',
   },
   {
     step: '02',
@@ -137,7 +137,7 @@ export default function About() {
           </h1>
 
           <p className="text-xl leading-relaxed mb-10" style={{ color: 'var(--text-2)' }}>
-            WebGames is an open, community-driven platform where anyone can upload and share browser games — and anyone can play them, for free, with no sign-up required.
+            WebGames is an open, community driven platform where anyone can upload and share browser games, and anyone can play them, for free, with no sign up required.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center">

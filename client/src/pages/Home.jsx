@@ -365,7 +365,7 @@ export default function Home() {
           </h1>
 
           <p className="text-lg sm:text-xl max-w-2xl mx-auto mb-10 leading-relaxed font-medium" style={{ color: 'var(--text-2)' }}>
-            The ultimate community-driven platform for browser games. Discover, play, and share for free — no account needed.
+            The ultimate community driven platform for browser games. Discover, play, and share for free. No account needed.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center gap-4 mb-16 w-full sm:w-auto">

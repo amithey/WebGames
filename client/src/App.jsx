@@ -150,7 +150,7 @@ function Footer() {
               <span className="text-lg font-bold animated-gradient-text">WebGames</span>
             </Link>
             <p className="text-sm leading-relaxed mb-5" style={{ color: 'var(--text-2)' }}>
-              The ultimate community-driven platform for browser games. Upload, discover, and play free games. No account needed.
+              The ultimate community driven platform for browser games. Upload, discover, and play free games. No account needed.
             </p>
             {/* Social icons */}
             <div className="flex items-center gap-2">
