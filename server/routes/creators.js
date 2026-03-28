@@ -1,6 +1,6 @@
 const express = require('express');
 const router  = express.Router();
-const pool    = require('../db');
+const db      = require('../db');
 
 // Reuse the same camelCase mapper from games.js inline (avoids circular require)
 function formatGame(row) {
@@ -23,7 +23,7 @@ function formatGame(row) {
 router.get('/:name', async (req, res) => {
   try {
     const name = req.params.name;
-    const { rows } = await pool.query(
+    const { rows } = await db.query(
       'SELECT * FROM games WHERE author = $1 ORDER BY created_at DESC',
       [name]
     );

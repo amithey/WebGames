@@ -2,7 +2,7 @@ const express   = require('express');
 const router    = express.Router();
 const crypto    = require('crypto');
 const jwt       = require('jsonwebtoken');
-const pool      = require('../db');
+const db        = require('../db');
 const { supabase, uploadFile, deleteFolder, getMimeType } = require('../storage');
 const { adminLoginLimiter } = require('../middleware/rateLimiter');
 
@@ -72,14 +72,14 @@ router.use(adminAuth);
 router.get('/stats', async (req, res) => {
   try {
     const [{ rows: [games] }, { rows: [comments] }] = await Promise.all([
-      pool.query(`
+      db.query(`
         SELECT
           COUNT(*)::int             AS total_games,
           COALESCE(SUM(likes), 0)   AS total_likes,
           COALESCE(SUM(play_count),0) AS total_plays
         FROM games
       `),
-      pool.query('SELECT COUNT(*)::int AS total_comments FROM comments'),
+      db.query('SELECT COUNT(*)::int AS total_comments FROM comments'),
     ]);
     res.json({
       totalGames:    games.total_games,
@@ -97,7 +97,7 @@ router.get('/stats', async (req, res) => {
 
 router.get('/games', async (req, res) => {
   try {
-    const { rows } = await pool.query(`
+    const { rows } = await db.query(`
       SELECT g.id, g.title, g.author, g.likes, g.play_count, g.featured, g.created_at,
         COUNT(DISTINCT c.id)::int AS comment_count,
         COUNT(DISTINCT r.id)::int AS rating_count,
@@ -130,7 +130,7 @@ router.get('/games', async (req, res) => {
 
 router.delete('/games/:id', async (req, res) => {
   try {
-    const { rows: [game] } = await pool.query(
+    const { rows: [game] } = await db.query(
       'SELECT id, thumbnail FROM games WHERE id = $1', [req.params.id]
     );
     if (!game) return res.status(404).json({ error: 'Game not found' });
@@ -151,7 +151,7 @@ router.delete('/games/:id', async (req, res) => {
       }
     }
 
-    await pool.query('DELETE FROM games WHERE id = $1', [req.params.id]);
+    await db.query('DELETE FROM games WHERE id = $1', [req.params.id]);
     res.json({ success: true });
   } catch (err) {
     console.error('Error deleting game:', err);
@@ -163,7 +163,7 @@ router.delete('/games/:id', async (req, res) => {
 
 router.patch('/games/:id/feature', async (req, res) => {
   try {
-    const { rows: [updated] } = await pool.query(
+    const { rows: [updated] } = await db.query(
       'UPDATE games SET featured = NOT featured WHERE id = $1 RETURNING id, featured',
       [req.params.id]
     );

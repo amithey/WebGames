@@ -51,15 +51,29 @@ app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 app.use(generalLimiter);
 
 // ── Health check (before routes so it always works) ──────────────────────────
-app.get('/api/health', (_req, res) => {
+app.get('/api/health', async (_req, res) => {
   const envStatus = {
     DATABASE_URL:      !!process.env.DATABASE_URL,
     SUPABASE_URL:      !!process.env.SUPABASE_URL,
     SUPABASE_ANON_KEY: !!process.env.SUPABASE_ANON_KEY,
-    FRONTEND_URL:      process.env.FRONTEND_URL || '(not set)',
+    FRONTEND_URL:      (process.env.FRONTEND_URL || '(not set)').trim(),
     NODE_ENV:          process.env.NODE_ENV || '(not set)',
   };
-  // Check if storage module loaded correctly
+
+  // DB debug info (shows URL shape without exposing password)
+  let dbDebug = null;
+  let dbConnTest = 'not tested';
+  try {
+    const db = require('./db');
+    dbDebug = db.getDebug();
+    // Try a simple query to test the connection
+    await db.query('SELECT 1');
+    dbConnTest = 'ok';
+  } catch (e) {
+    dbConnTest = `failed: ${e.message}`;
+  }
+
+  // Storage status
   let storageStatus = 'unknown';
   try {
     const { getStorageStatus } = require('./storage');
@@ -67,7 +81,8 @@ app.get('/api/health', (_req, res) => {
   } catch (e) {
     storageStatus = `failed to load: ${e.message}`;
   }
-  res.json({ status: 'ok', env: envStatus, storage: storageStatus });
+
+  res.json({ status: 'ok', env: envStatus, db: { debug: dbDebug, connection: dbConnTest }, storage: storageStatus });
 });
 
 // ── Routes (lazy-loaded to catch require-time crashes) ───────────────────────

@@ -4,7 +4,7 @@ const multer   = require('multer');
 const path     = require('path');
 const AdmZip   = require('adm-zip');
 const { v4: uuidv4 } = require('uuid');
-const pool     = require('../db');
+const db       = require('../db');
 const { uploadFile, deleteFolder, getMimeType } = require('../storage');
 const { uploadLimiter, interactionLimiter } = require('../middleware/rateLimiter');
 
@@ -155,7 +155,7 @@ router.get('/', async (req, res) => {
       ORDER BY g.featured DESC, ${orderBy}
     `;
 
-    let { rows } = await pool.query(sql, params);
+    let { rows } = await db.query(sql, params);
 
     // Tag filtering is done in JS (tags are stored as JSON text)
     if (tags.length > 0) {
@@ -206,13 +206,13 @@ router.post('/', uploadLimiter, upload.fields([{ name: 'gameFile', maxCount: 1 }
       ? tags.split(',').map(t => t.trim()).filter(Boolean).slice(0, 10)
       : [];
 
-    await pool.query(
+    await db.query(
       `INSERT INTO games (id, title, description, author, tags, thumbnail, file_type, file_url)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
       [id, title, description, author, JSON.stringify(tagsArray), thumbnailUrl, ext.slice(1), fileUrl]
     );
 
-    const { rows: [game] } = await pool.query(
+    const { rows: [game] } = await db.query(
       `${GAME_SELECT} WHERE g.id = $1 GROUP BY g.id`, [id]
     );
     res.status(201).json(formatGame(game));
@@ -229,7 +229,7 @@ router.post('/', uploadLimiter, upload.fields([{ name: 'gameFile', maxCount: 1 }
 
 router.get('/:id', async (req, res) => {
   try {
-    const { rows: [game] } = await pool.query(
+    const { rows: [game] } = await db.query(
       `${GAME_SELECT} WHERE g.id = $1 GROUP BY g.id`, [req.params.id]
     );
     if (!game) return res.status(404).json({ error: 'Game not found' });
@@ -244,7 +244,7 @@ router.get('/:id', async (req, res) => {
 
 router.get('/:id/play', async (req, res) => {
   try {
-    const { rows: [game] } = await pool.query('SELECT file_url FROM games WHERE id = $1', [req.params.id]);
+    const { rows: [game] } = await db.query('SELECT file_url FROM games WHERE id = $1', [req.params.id]);
     if (!game)           return res.status(404).json({ error: 'Game not found' });
     if (!game.file_url)  return res.status(404).json({ error: 'Game file not found' });
     res.redirect(game.file_url);
@@ -258,7 +258,7 @@ router.get('/:id/play', async (req, res) => {
 
 router.post('/:id/like', interactionLimiter, async (req, res) => {
   try {
-    const { rows: [updated] } = await pool.query(
+    const { rows: [updated] } = await db.query(
       'UPDATE games SET likes = likes + 1 WHERE id = $1 RETURNING likes',
       [req.params.id]
     );
@@ -274,7 +274,7 @@ router.post('/:id/like', interactionLimiter, async (req, res) => {
 
 router.patch('/:id/increment', async (req, res) => {
   try {
-    const { rows: [updated] } = await pool.query(
+    const { rows: [updated] } = await db.query(
       'UPDATE games SET play_count = play_count + 1 WHERE id = $1 RETURNING *',
       [req.params.id]
     );
@@ -294,12 +294,12 @@ router.post('/:id/rate', interactionLimiter, async (req, res) => {
     if (!rating || rating < 1 || rating > 5)
       return res.status(400).json({ error: 'Rating must be between 1 and 5' });
 
-    const { rows: [game] } = await pool.query('SELECT id FROM games WHERE id = $1', [req.params.id]);
+    const { rows: [game] } = await db.query('SELECT id FROM games WHERE id = $1', [req.params.id]);
     if (!game) return res.status(404).json({ error: 'Game not found' });
 
-    await pool.query('INSERT INTO ratings (game_id, rating) VALUES ($1, $2)', [req.params.id, rating]);
+    await db.query('INSERT INTO ratings (game_id, rating) VALUES ($1, $2)', [req.params.id, rating]);
 
-    const { rows: [result] } = await pool.query(
+    const { rows: [result] } = await db.query(
       `SELECT COALESCE(AVG(rating)::numeric(3,1), 0)::float AS average,
               COUNT(*)::int                                  AS count
        FROM ratings WHERE game_id = $1`,
@@ -316,7 +316,7 @@ router.post('/:id/rate', interactionLimiter, async (req, res) => {
 
 router.get('/:id/rating', async (req, res) => {
   try {
-    const { rows: [result] } = await pool.query(
+    const { rows: [result] } = await db.query(
       `SELECT COALESCE(AVG(rating)::numeric(3,1), 0)::float AS average,
               COUNT(*)::int                                  AS count
        FROM ratings WHERE game_id = $1`,
@@ -333,9 +333,9 @@ router.get('/:id/rating', async (req, res) => {
 
 router.get('/:id/comments', async (req, res) => {
   try {
-    const { rows: [game] } = await pool.query('SELECT id FROM games WHERE id = $1', [req.params.id]);
+    const { rows: [game] } = await db.query('SELECT id FROM games WHERE id = $1', [req.params.id]);
     if (!game) return res.status(404).json({ error: 'Game not found' });
-    const { rows } = await pool.query(
+    const { rows } = await db.query(
       'SELECT * FROM comments WHERE game_id = $1 ORDER BY created_at DESC',
       [req.params.id]
     );
@@ -350,14 +350,14 @@ router.get('/:id/comments', async (req, res) => {
 
 router.post('/:id/comments', interactionLimiter, async (req, res) => {
   try {
-    const { rows: [game] } = await pool.query('SELECT id FROM games WHERE id = $1', [req.params.id]);
+    const { rows: [game] } = await db.query('SELECT id FROM games WHERE id = $1', [req.params.id]);
     if (!game) return res.status(404).json({ error: 'Game not found' });
 
     const content     = sanitizeText(req.body.content, 1000);
     const author_name = sanitizeText(req.body.author_name, 80) || 'Anonymous';
     if (!content) return res.status(400).json({ error: 'Comment content is required' });
 
-    const { rows: [comment] } = await pool.query(
+    const { rows: [comment] } = await db.query(
       'INSERT INTO comments (game_id, author_name, content) VALUES ($1,$2,$3) RETURNING *',
       [req.params.id, author_name, content]
     );
