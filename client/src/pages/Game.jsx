@@ -2,6 +2,18 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import axios from 'axios';
 
+function trackRecentlyPlayed(game) {
+  try {
+    const KEY  = 'wg_recently_played';
+    const prev = JSON.parse(localStorage.getItem(KEY) || '[]');
+    const next = [
+      { id: game.id, title: game.title, thumbnail: game.thumbnail || null, author: game.author || '' },
+      ...prev.filter(g => g.id !== game.id),
+    ].slice(0, 8);
+    localStorage.setItem(KEY, JSON.stringify(next));
+  } catch {}
+}
+
 function HeartIcon({ filled }) {
   return filled ? (
     <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
@@ -343,6 +355,7 @@ export default function Game() {
           setLikes(res.data.likes ?? 0);
           setLiked(localStorage.getItem(`liked_${id}`) === '1');
           setLoading(false);
+          trackRecentlyPlayed(res.data);
         }
         axios.patch(`/api/games/${id}/increment`).catch(() => {});
       } catch (err) {

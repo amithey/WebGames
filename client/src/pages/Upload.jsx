@@ -87,9 +87,11 @@ export default function Upload() {
   const [thumbnail, setThumbnail] = useState(null);
   const [thumbnailPreview, setThumbnailPreview] = useState(null);
 
-  const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState({});
-  const [serverError, setServerError] = useState('');
+  const [loading, setLoading]           = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadStage, setUploadStage]   = useState(''); // 'preparing'|'uploading'|'processing'|''
+  const [errors, setErrors]             = useState({});
+  const [serverError, setServerError]   = useState('');
 
   function handleChange(e) {
     const { name, value } = e.target;
@@ -132,6 +134,8 @@ export default function Upload() {
     }
 
     setLoading(true);
+    setUploadProgress(0);
+    setUploadStage('preparing');
 
     const data = new FormData();
     data.append('title', form.title.trim());
@@ -141,14 +145,27 @@ export default function Upload() {
     data.append('gameFile', gameFile);
     if (thumbnail) data.append('thumbnail', thumbnail);
 
+    // Short delay so "Preparing" stage is visible
+    await new Promise(r => setTimeout(r, 400));
+    setUploadStage('uploading');
+
     try {
       const res = await axios.post('/api/games', data, {
         headers: { 'Content-Type': 'multipart/form-data' },
+        onUploadProgress: (e) => {
+          const pct = e.total ? Math.round((e.loaded * 100) / e.total) : 50;
+          setUploadProgress(Math.min(pct, 95));
+        },
       });
+      setUploadStage('processing');
+      setUploadProgress(100);
+      await new Promise(r => setTimeout(r, 600));
       navigate(`/games/${res.data.id}`);
     } catch (err) {
       const msg = err.response?.data?.error || 'Upload failed. Please try again.';
       setServerError(msg);
+      setUploadStage('');
+      setUploadProgress(0);
       setLoading(false);
     }
   }
@@ -389,10 +406,49 @@ export default function Upload() {
         </div>
 
         {/* Submit */}
+        {/* Upload progress */}
+        {loading && (
+          <div className="rounded-2xl p-6 space-y-5" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-sm font-semibold" style={{ color: 'var(--text-1)' }}>
+                {uploadStage === 'preparing'  && '⏳ Preparing your game...'}
+                {uploadStage === 'uploading'  && `📤 Uploading... ${uploadProgress}%`}
+                {uploadStage === 'processing' && '✅ Processing — almost done!'}
+              </span>
+              <span className="text-xs font-mono" style={{ color: 'var(--text-3)' }}>{uploadProgress}%</span>
+            </div>
+            <div className="progress-track">
+              <div className="progress-fill" style={{ width: `${uploadProgress}%` }} />
+            </div>
+            <div className="flex items-center gap-6 text-xs" style={{ color: 'var(--text-3)' }}>
+              {[
+                { key: 'preparing',  label: 'Preparing'  },
+                { key: 'uploading',  label: 'Uploading'  },
+                { key: 'processing', label: 'Processing' },
+              ].map(({ key, label }) => {
+                const stages = ['preparing', 'uploading', 'processing'];
+                const idx = stages.indexOf(uploadStage);
+                const thisIdx = stages.indexOf(key);
+                const isDone   = idx > thisIdx;
+                const isActive = idx === thisIdx;
+                return (
+                  <div key={key} className={`flex items-center gap-1.5 ${isActive ? 'text-violet-400' : isDone ? 'text-green-400' : ''}`}>
+                    {isDone
+                      ? <svg className="w-3.5 h-3.5 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                      : <div className={`w-2 h-2 rounded-full ${isActive ? 'bg-violet-400 animate-pulse' : 'bg-current opacity-30'}`} />
+                    }
+                    {label}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         <button
           type="submit"
           disabled={loading}
-          className="w-full btn-primary py-4 text-base font-semibold flex items-center justify-center gap-3 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:bg-purple-600"
+          className="w-full btn-primary py-4 text-base font-semibold flex items-center justify-center gap-3 disabled:opacity-60 disabled:cursor-not-allowed"
         >
           {loading ? (
             <>
@@ -400,7 +456,7 @@ export default function Upload() {
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
               </svg>
-              Uploading...
+              {uploadStage === 'processing' ? 'Processing...' : 'Uploading...'}
             </>
           ) : (
             <>
