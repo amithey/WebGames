@@ -56,7 +56,7 @@ function FileDropZone({ accept, label, hint, icon, onChange, file, required }) {
             </svg>
           </div>
           <p className="text-green-400 font-medium text-sm">{file.name}</p>
-          <p className="text-slate-500 text-xs">{(file.size / 1024).toFixed(1)} KB &mdash; click to change</p>
+          <p className="text-slate-500 text-xs">{(file.size / 1024).toFixed(1)} KB, click to change</p>
         </div>
       ) : (
         <div className="flex flex-col items-center gap-3">
@@ -340,7 +340,7 @@ export default function Upload() {
             <FileDropZone
               accept=".html,.zip"
               label="Drop your game file here"
-              hint=".html or .zip (max 100MB) — ZIP must contain index.html"
+              hint=".html or .zip (max 100MB), and ZIP must contain index.html"
               icon={
                 <svg className="w-6 h-6 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
@@ -386,13 +386,13 @@ export default function Upload() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
-                <p className="mt-2 text-xs text-slate-500 text-center">{thumbnail?.name} &mdash; click X to remove</p>
+                <p className="mt-2 text-xs text-slate-500 text-center">{thumbnail?.name}, click X to remove</p>
               </div>
             ) : (
               <FileDropZone
                 accept="image/*"
                 label="Drop a thumbnail image"
-                hint="PNG, JPG, GIF, WebP — shown on game cards"
+                hint="PNG, JPG, GIF, WebP. Shown on game cards."
                 icon={
                   <svg className="w-6 h-6 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -413,7 +413,7 @@ export default function Upload() {
               <span className="text-sm font-semibold" style={{ color: 'var(--text-1)' }}>
                 {uploadStage === 'preparing'  && '⏳ Preparing your game...'}
                 {uploadStage === 'uploading'  && `📤 Uploading... ${uploadProgress}%`}
-                {uploadStage === 'processing' && '✅ Processing — almost done!'}
+                {uploadStage === 'processing' && '✅ Processing, almost done!'}
               </span>
               <span className="text-xs font-mono" style={{ color: 'var(--text-3)' }}>{uploadProgress}%</span>
             </div>
