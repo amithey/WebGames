@@ -362,6 +362,38 @@ export default function Game() {
   const [liked, setLiked] = useState(false);
   const [liking, setLiking] = useState(false);
   const [gameHtml, setGameHtml] = useState(null);
+  const [iframeFocused, setIframeFocused] = useState(false);
+
+  // Block game-related keys on the parent page to prevent Quick Find / scroll
+  useEffect(() => {
+    const GAME_KEYS = new Set([
+      'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight',
+      ' ', 'w', 'W', 's', 'S', 'a', 'A', 'd', 'D',
+    ]);
+    function handleKey(e) {
+      if (GAME_KEYS.has(e.key)) e.preventDefault();
+    }
+    document.addEventListener('keydown', handleKey);
+    return () => document.removeEventListener('keydown', handleKey);
+  }, []);
+
+  // Track whether the iframe is focused
+  useEffect(() => {
+    function onFocus() {
+      setIframeFocused(document.activeElement === iframeRef.current);
+    }
+    window.addEventListener('focus', onFocus, true);
+    window.addEventListener('blur', onFocus, true);
+    return () => {
+      window.removeEventListener('focus', onFocus, true);
+      window.removeEventListener('blur', onFocus, true);
+    };
+  }, []);
+
+  function focusIframe() {
+    iframeRef.current?.focus();
+    setIframeFocused(true);
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -620,8 +652,25 @@ export default function Game() {
             }}
             sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-pointer-lock allow-popups"
             allowFullScreen
-            onLoad={() => setIframeLoading(false)}
+            onLoad={() => { setIframeLoading(false); focusIframe(); }}
           />
+        )}
+
+        {/* Click-to-play overlay — shown when iframe loses focus */}
+        {gameHtml && !iframeLoading && !iframeFocused && (
+          <div
+            onClick={focusIframe}
+            className="absolute inset-0 top-[41px] flex items-center justify-center bg-black/40 z-10 cursor-pointer transition-opacity"
+          >
+            <div className="flex flex-col items-center gap-3 pointer-events-none">
+              <div className="w-16 h-16 rounded-full bg-purple-600/80 flex items-center justify-center">
+                <svg className="w-8 h-8 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M8 5v14l11-7z" />
+                </svg>
+              </div>
+              <p className="text-white text-sm font-medium">Click to play</p>
+            </div>
+          </div>
         )}
       </div>
 
