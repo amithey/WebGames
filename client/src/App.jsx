@@ -104,7 +104,10 @@ function Navbar() {
           </motion.div>
           <div className="flex flex-col">
             <span className="text-xl font-black tracking-tighter animated-gradient-text leading-none">WebGames</span>
-            <span className="text-[10px] font-black bg-rose-500 text-white px-1.5 py-0.5 rounded mt-0.5 self-start animate-pulse">LIVE VERSION 2.0</span>
+            <div className="flex gap-2 mt-0.5">
+              <span className="text-[10px] font-black bg-rose-500 text-white px-1.5 py-0.5 rounded animate-pulse">LIVE VERSION 2.0</span>
+              <span className="text-[10px] font-black bg-emerald-500 text-white px-1.5 py-0.5 rounded">FORCED UPDATE READY</span>
+            </div>
           </div>
         </Link>
 
