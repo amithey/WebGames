@@ -80,11 +80,14 @@ function Navbar() {
         <Link to="/" className="flex items-center gap-3 group">
           <motion.div 
             whileHover={{ scale: 1.05, rotate: 5 }}
-            className="w-10 h-10 bg-gradient-to-br from-sky-400 to-indigo-500 rounded-xl flex items-center justify-center shadow-lg shadow-sky-500/20"
+            className="w-10 h-10 bg-gradient-to-br from-rose-400 to-orange-500 rounded-xl flex items-center justify-center shadow-lg shadow-rose-500/20"
           >
             <Gamepad2 className="w-6 h-6 text-white" />
           </motion.div>
-          <span className="text-xl font-black tracking-tighter animated-gradient-text">WebGames</span>
+          <div className="flex flex-col">
+            <span className="text-xl font-black tracking-tighter animated-gradient-text leading-none">WebGames</span>
+            <span className="text-[10px] font-black bg-rose-500 text-white px-1.5 py-0.5 rounded mt-0.5 self-start animate-pulse">LIVE VERSION 2.0</span>
+          </div>
         </Link>
 
         {/* Desktop Nav */}
