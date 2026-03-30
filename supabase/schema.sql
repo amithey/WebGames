@@ -1,12 +1,19 @@
 -- ============================================================
 -- WebGames — Supabase PostgreSQL Schema
--- Run this once in Supabase: Dashboard → SQL Editor → New query
--- Safe to re-run (uses IF NOT EXISTS / DO blocks)
 -- ============================================================
+
+-- ── Profiles ─────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS profiles (
+  id          UUID        PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  username    TEXT,
+  is_admin    BOOLEAN     DEFAULT false,
+  created_at  TIMESTAMPTZ DEFAULT NOW()
+);
 
 -- ── Core games table ────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS games (
   id           TEXT        PRIMARY KEY,
+  user_id      UUID        REFERENCES auth.users(id) ON DELETE SET NULL,
   title        TEXT        NOT NULL,
   description  TEXT        DEFAULT '',
   author       TEXT        DEFAULT '',
@@ -72,12 +79,9 @@ CREATE INDEX IF NOT EXISTS idx_comments_game_id ON comments(game_id);
 CREATE INDEX IF NOT EXISTS idx_comments_parent  ON comments(parent_id);
 CREATE INDEX IF NOT EXISTS idx_ratings_game_id  ON ratings(game_id);
 
--- ── Migrations (safe to run on existing DBs) ─────────────────
+-- ── Migrations ───────────────────────────────────────────────
 DO $$ BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM information_schema.columns
-    WHERE table_name = 'games' AND column_name = 'featured'
-  ) THEN
-    ALTER TABLE games ADD COLUMN featured BOOLEAN DEFAULT false;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'games' AND column_name = 'user_id') THEN
+    ALTER TABLE games ADD COLUMN user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL;
   END IF;
 END $$;

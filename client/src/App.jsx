@@ -60,18 +60,46 @@ function Navbar() {
   const [scrolled, setScrolled]     = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [user, setUser]             = useState(null);
+  const [isAdmin, setIsAdmin]       = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
   const { theme, toggleTheme }      = useTheme();
   const location                    = useLocation();
 
-  useEffect(() => { setMobileOpen(false); }, [location.pathname]);
+  useEffect(() => { setMobileOpen(false); setShowNotifications(false); }, [location.pathname]);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-    });
+    const checkUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      const u = session?.user ?? null;
+      setUser(u);
+      
+      if (u) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('is_admin')
+          .eq('id', u.id)
+          .single();
+        setIsAdmin(profile?.is_admin || false);
+      } else {
+        setIsAdmin(false);
+      }
+    };
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
+    checkUser();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      const u = session?.user ?? null;
+      setUser(u);
+      if (u) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('is_admin')
+          .eq('id', u.id)
+          .single();
+        setIsAdmin(profile?.is_admin || false);
+      } else {
+        setIsAdmin(false);
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -85,7 +113,7 @@ function Navbar() {
   }, []);
 
   const navLinks = [
-    { to: '/', label: 'Browse', icon: Gamepad2 },
+    { to: '/', label: 'Browse', icon: Gamepad2, onClick: () => document.getElementById('browse-section')?.scrollIntoView({ behavior: 'smooth' }) },
     { to: '/leaderboard', label: 'Leaderboard', icon: Trophy },
     { to: '/about', label: 'About', icon: Info },
   ];
@@ -102,22 +130,20 @@ function Navbar() {
           >
             <Gamepad2 className="w-6 h-6 text-white" />
           </motion.div>
-          <div className="flex flex-col">
+          <div className="flex items-center gap-2">
             <span className="text-xl font-black tracking-tighter animated-gradient-text leading-none">WebGames</span>
-            <div className="flex gap-2 mt-0.5">
-              <span className="text-[10px] font-black bg-rose-500 text-white px-1.5 py-0.5 rounded animate-pulse">LIVE VERSION 2.0</span>
-              <span className="text-[10px] font-black bg-emerald-500 text-white px-1.5 py-0.5 rounded">FORCED UPDATE READY</span>
-            </div>
+            <span className="text-[10px] font-medium text-slate-500 mt-1">v2.1</span>
           </div>
         </Link>
 
         {/* Desktop Nav */}
         <div className="hidden md:flex items-center gap-2">
-          {navLinks.map(({ to, label, icon: Icon }) => (
+          {navLinks.map(({ to, label, icon: Icon, onClick }) => (
             <NavLink 
               key={to} 
               to={to} 
               end={to === '/'}
+              onClick={onClick}
               className={({ isActive }) => `
                 flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all
                 ${isActive ? 'bg-sky-500/10 text-sky-400' : 'text-slate-400 hover:text-white hover:bg-white/5'}
@@ -127,18 +153,50 @@ function Navbar() {
               {label}
             </NavLink>
           ))}
+          {isAdmin && (
+            <NavLink 
+              to="/admin"
+              className={({ isActive }) => `
+                flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all
+                ${isActive ? 'bg-emerald-500/10 text-emerald-400' : 'text-slate-400 hover:text-emerald-400 hover:bg-emerald-500/5'}
+              `}
+            >
+              <ShieldCheck className="w-4 h-4" />
+              Admin
+            </NavLink>
+          )}
         </div>
 
         {/* Actions */}
         <div className="flex items-center gap-3">
-          <div className="hidden sm:flex items-center gap-2 mr-2">
+          <div className="hidden sm:flex items-center gap-2 mr-2 relative">
             <button 
-              onClick={() => toast('Notifications coming soon!', { icon: '🔔' })}
+              onClick={() => setShowNotifications(!showNotifications)}
               className="btn-ghost relative hover:scale-110 hover:bg-white/10 transition-all"
             >
               <Bell className="w-5 h-5" />
               <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-sky-500 rounded-full border-2 border-slate-900" />
             </button>
+
+            <AnimatePresence>
+              {showNotifications && (
+                <motion.div 
+                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                  className="absolute top-full right-0 mt-4 w-80 p-4 rounded-[2rem] bg-slate-900 border border-white/10 shadow-2xl z-[100]"
+                >
+                  <h3 className="font-black text-lg mb-4 px-2">Notifications</h3>
+                  <div className="space-y-2">
+                    <div className="p-4 rounded-2xl bg-white/5 border border-white/5">
+                      <p className="text-sm font-bold text-white mb-1">Welcome to WebGames! 👋</p>
+                      <p className="text-xs text-slate-400">Discover and share amazing AI-crafted games.</p>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             {user ? (
               <Link 
                 to="/profile"

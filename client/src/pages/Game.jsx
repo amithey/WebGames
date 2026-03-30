@@ -314,8 +314,10 @@ export default function Game() {
       await axios.post(`/api/games/${id}/report`, { reason: reportReason });
       setShowReportModal(false);
       setReportReason('');
-      alert('Report submitted. Thank you for keeping our community safe.');
-    } catch (_) {}
+      toast.success('Report submitted. Thank you!');
+    } catch (_) {
+      toast.error('Failed to submit report');
+    }
   };
 
   const structuredComments = useMemo(() => {

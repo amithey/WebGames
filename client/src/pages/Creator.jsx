@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { motion } from 'framer-motion';
+import toast from 'react-hot-toast';
 import { 
   User, 
   Gamepad2, 
@@ -75,6 +76,21 @@ export default function Creator() {
     fetchCreator();
   }, [name]);
 
+  const handleShare = async () => {
+    try {
+      await navigator.share({
+        title: `${name}'s Profile | WebGames`,
+        text: `Check out ${name}'s AI games on WebGames!`,
+        url: window.location.href,
+      });
+    } catch (err) {
+      if (err.name !== 'AbortError') {
+        await navigator.clipboard.writeText(window.location.href);
+        toast.success('Profile link copied!');
+      }
+    }
+  };
+
   if (loading) return (
     <div className="max-w-7xl mx-auto px-4 py-20 text-center font-black text-sky-400">
       <Sparkles className="w-12 h-12 animate-pulse mx-auto mb-4" />
@@ -116,10 +132,16 @@ export default function Creator() {
           </div>
 
           <div className="flex items-center gap-3">
-            <button className="h-14 w-14 rounded-2xl bg-slate-950 border border-white/5 flex items-center justify-center text-slate-400 hover:text-white transition-all">
+            <button 
+              onClick={handleShare}
+              className="h-14 w-14 rounded-2xl bg-slate-950 border border-white/5 flex items-center justify-center text-slate-400 hover:text-white transition-all hover:scale-110"
+            >
               <Share2 className="w-6 h-6" />
             </button>
-            <button className="h-14 px-8 rounded-2xl bg-sky-500 text-white font-black shadow-lg shadow-sky-500/20">
+            <button 
+              onClick={() => toast('Follow feature coming soon!', { icon: '✨' })}
+              className="h-14 px-8 rounded-2xl bg-sky-500 text-white font-black shadow-lg shadow-sky-500/20 hover:scale-105 active:scale-95 transition-all"
+            >
               Follow Creator
             </button>
           </div>

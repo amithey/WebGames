@@ -6,26 +6,26 @@
 /* ── Theme Variables ───────────────────────────────────────────────────────── */
 :root,
 html[data-theme="dark"] {
-  --bg-page:        #0c0a09; /* Stone 950 - Visual Proof of Update */
-  --bg-card:        #1c1917; /* Stone 900 */
-  --bg-elevated:    #292524; /* Stone 800 */
-  --border:         rgba(255,255,255,0.08);
-  --border-strong:  rgba(255,255,255,0.15);
-  --glass-bg:       rgba(28, 25, 23, 0.7);
-  --glass-bg-hover: rgba(41, 37, 36, 0.9);
-  --glass-border:   rgba(255,255,255,0.12);
-  --text-1:         #fafaf9; /* Stone 50 */
-  --text-2:         #a8a29e; /* Stone 400 */
-  --text-3:         #78716c; /* Stone 500 */
+  --bg-page:        #09090b; /* Zinc 950 */
+  --bg-card:        #18181b; /* Zinc 900 */
+  --bg-elevated:    #27272a; /* Zinc 800 */
+  --border:         rgba(255,255,255,0.06);
+  --border-strong:  rgba(255,255,255,0.12);
+  --glass-bg:       rgba(9, 9, 11, 0.7);
+  --glass-bg-hover: rgba(24, 24, 27, 0.9);
+  --glass-border:   rgba(255,255,255,0.1);
+  --text-1:         #fafafa; /* Zinc 50 */
+  --text-2:         #a1a1aa; /* Zinc 400 */
+  --text-3:         #71717a; /* Zinc 500 */
   --accent-blue:    #38bdf8; /* Sky 400 */
   --accent-green:   #4ade80; /* Green 400 */
   --accent-purple:  #818cf8; /* Indigo 400 */
-  --nav-bg:         rgba(12, 10, 9, 0.85);
-  --shadow-card:    0 10px 40px -15px rgba(0,0,0,0.6);
-  --shadow-glow:    0 0 25px rgba(56, 189, 248, 0.2);
-  --orb-1:          rgba(129, 140, 248, 0.2);
-  --orb-2:          rgba(56, 189, 248, 0.15);
-  --orb-3:          rgba(74, 222, 128, 0.1);
+  --nav-bg:         rgba(9, 9, 11, 0.85);
+  --shadow-card:    0 10px 40px -15px rgba(0,0,0,0.5);
+  --shadow-glow:    0 0 20px rgba(56, 189, 248, 0.15);
+  --orb-1:          rgba(129, 140, 248, 0.15);
+  --orb-2:          rgba(56, 189, 248, 0.1);
+  --orb-3:          rgba(74, 222, 128, 0.08);
 }
 
 html[data-theme="light"] {
@@ -153,12 +153,12 @@ html[data-theme="light"] {
 /* ── Navbar ────────────────────────────────────────────────────────────────── */
 .navbar {
   @apply fixed top-0 left-0 right-0 z-50 h-20 flex items-center transition-all duration-300;
-  border-bottom: 3px solid #38bdf8; /* BRIGHT SKY BLUE BORDER */
+  border-bottom: 1px solid var(--border);
 }
 .navbar.scrolled {
   @apply h-16 backdrop-blur-md;
   background: var(--nav-bg);
-  border-bottom: 3px solid #818cf8; /* BRIGHT INDIGO BORDER */
+  border-bottom: 1px solid var(--border-strong);
 }
 
 /* ── Skeleton ──────────────────────────────────────────────────────────────── */

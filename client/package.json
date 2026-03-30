@@ -20,7 +20,8 @@
     "react-helmet-async": "^3.0.0",
     "react-hot-toast": "^2.6.0",
     "react-parallax-tilt": "^1.7.320",
-    "react-router-dom": "^6.21.3"
+    "react-router-dom": "^6.21.3",
+    "webgames": "file:.."
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.2.1",
