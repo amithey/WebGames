@@ -11,25 +11,26 @@ let supabaseKey = rawKey;
 let initError = null;
 
 if (!supabaseUrl || !supabaseKey) {
-  initError = 'SUPABASE_URL or SUPABASE_ANON_KEY is not set or empty';
+  initError = 'SUPABASE_URL or SUPABASE_ANON_KEY is missing from environment variables';
   console.error(`FATAL: ${initError}`);
-  console.error(`  SUPABASE_URL length: ${rawUrl.length}`);
-  console.error(`  SUPABASE_ANON_KEY length: ${rawKey.length}`);
 } else {
-  // Verify it's a valid URL
   try {
+    // Basic check for protocol
+    if (!supabaseUrl.startsWith('http')) {
+      supabaseUrl = `https://${supabaseUrl}`;
+    }
     new URL(supabaseUrl);
   } catch (e) {
-    initError = `SUPABASE_URL is not a valid URL: "${supabaseUrl.substring(0, 30)}..."`;
+    initError = `SUPABASE_URL is not a valid URL: "${supabaseUrl}"`;
     console.error(`FATAL: ${initError}`);
   }
-  // Mask the URL for safety
-  const maskedUrl = supabaseUrl.replace(/^(https?:\/\/)[^.]+/, '$1***');
-  console.log(`[Supabase] Initializing with URL: ${maskedUrl} (length: ${supabaseUrl.length})`);
-  console.log(`[Supabase] Key length: ${supabaseKey.length}, starts with: ${supabaseKey.substring(0, 10)}...`);
 }
 
-// Use placeholder values if real ones are missing — operations will fail gracefully
+if (!initError) {
+  const maskedUrl = supabaseUrl.replace(/^(https?:\/\/)[^.]+/, '$1***');
+  console.log(`[Supabase] Initializing with URL: ${maskedUrl}`);
+}
+
 const supabase = createClient(
   supabaseUrl || 'https://placeholder.supabase.co',
   supabaseKey || 'placeholder'

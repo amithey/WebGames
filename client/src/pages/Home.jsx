@@ -212,7 +212,13 @@ export default function Home() {
             <Link to="/upload" className="btn-primary px-10 py-4 text-lg w-full sm:w-auto">
               <UploadIcon className="w-6 h-6" /> Upload Your Game
             </Link>
-            <button onClick={() => document.getElementById('browse-section').scrollIntoView({ behavior: 'smooth' })} className="btn-secondary px-10 py-4 text-lg w-full sm:w-auto">
+            <button 
+              onClick={() => {
+                const el = document.getElementById('browse-section');
+                if (el) el.scrollIntoView({ behavior: 'smooth' });
+              }} 
+              className="btn-secondary px-10 py-4 text-lg w-full sm:w-auto"
+            >
               Explore Games
             </button>
           </motion.div>
