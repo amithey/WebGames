@@ -2,16 +2,16 @@ import React, { useState, useEffect, useContext, createContext } from 'react';
 import { BrowserRouter, Routes, Route, Link, NavLink, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { HelmetProvider } from 'react-helmet-async';
-import { 
-  Bell, 
-  User, 
-  Menu, 
-  X, 
-  Moon, 
-  Sun, 
-  Upload as UploadIcon, 
-  Github, 
-  Twitter, 
+import {
+  Bell,
+  User,
+  Menu,
+  X,
+  Moon,
+  Sun,
+  Upload as UploadIcon,
+  Globe,
+  ExternalLink,
   MessageSquare,
   Gamepad2,
   Info,
@@ -189,8 +189,8 @@ function Footer() {
               The premier destination for AI-crafted browser games. Built for creators, enjoyed by everyone.
             </p>
             <div className="flex gap-4">
-              <a href="#" className="btn-ghost p-2.5 bg-white/5 hover:text-sky-400"><Github className="w-5 h-5" /></a>
-              <a href="#" className="btn-ghost p-2.5 bg-white/5 hover:text-sky-400"><Twitter className="w-5 h-5" /></a>
+              <a href="https://github.com/amithey/WebGames" target="_blank" rel="noopener noreferrer" className="btn-ghost p-2.5 bg-white/5 hover:text-sky-400"><Globe className="w-5 h-5" /></a>
+              <a href="#" className="btn-ghost p-2.5 bg-white/5 hover:text-sky-400"><ExternalLink className="w-5 h-5" /></a>
               <a href="#" className="btn-ghost p-2.5 bg-white/5 hover:text-sky-400"><MessageSquare className="w-5 h-5" /></a>
             </div>
           </div>

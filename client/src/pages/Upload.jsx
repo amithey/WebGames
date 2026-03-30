@@ -3,17 +3,16 @@ import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { useDropzone } from 'react-dropzone';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Upload as UploadIcon, 
-  X, 
-  CheckCircle2, 
-  AlertCircle, 
-  Gamepad2, 
-  Cpu, 
-  Zap, 
-  LayoutGrid, 
-  Trophy, 
-  Simulate, 
+import {
+  Upload as UploadIcon,
+  X,
+  CheckCircle2,
+  AlertCircle,
+  Gamepad2,
+  Cpu,
+  Zap,
+  LayoutGrid,
+  Trophy,
   Image as ImageIcon,
   FileCode,
   Eye,
