@@ -2,6 +2,7 @@ import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react'
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
+import toast from 'react-hot-toast';
 import Tilt from 'react-parallax-tilt';
 import { 
   Search, 
@@ -286,7 +287,7 @@ export default function Home() {
               {collections.map(col => (
                 <div 
                   key={col.id} 
-                  onClick={() => alert(`Collection '${col.name}' coming soon!`)}
+                  onClick={() => toast(`Collection '${col.name}' coming soon!`, { icon: '✨' })}
                   className="p-8 rounded-[2rem] bg-slate-900 border border-white/5 group cursor-pointer hover:border-sky-500/30 hover:scale-105 hover:bg-slate-800/50 transition-all"
                 >
                   <h3 className="text-2xl font-black text-white mb-2 group-hover:text-sky-400 transition-colors">{col.name}</h3>

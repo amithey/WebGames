@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useContext, createContext } from 'react';
-import { BrowserRouter, Routes, Route, Link, NavLink, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { HelmetProvider } from 'react-helmet-async';
+import { Toaster, toast } from 'react-hot-toast';
+import { supabase } from './supabase';
 import {
   Bell,
   User,
@@ -16,7 +18,8 @@ import {
   Gamepad2,
   Info,
   Trophy,
-  LayoutDashboard
+  LayoutDashboard,
+  LogIn
 } from 'lucide-react';
 import Home from './pages/Home.jsx';
 import Upload from './pages/Upload.jsx';
@@ -26,6 +29,8 @@ import Leaderboard from './pages/Leaderboard.jsx';
 import Admin from './pages/Admin.jsx';
 import About from './pages/About.jsx';
 import Stats from './pages/Stats.jsx';
+import Login from './pages/Login.jsx';
+import Profile from './pages/Profile.jsx';
 
 // ─── Theme Context ─────────────────────────────────────────────────────────────
 const ThemeContext = createContext({ theme: 'dark', toggleTheme: () => {} });
@@ -54,10 +59,23 @@ function ThemeProvider({ children }) {
 function Navbar() {
   const [scrolled, setScrolled]     = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [user, setUser]             = useState(null);
   const { theme, toggleTheme }      = useTheme();
   const location                    = useLocation();
 
   useEffect(() => { setMobileOpen(false); }, [location.pathname]);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
@@ -112,18 +130,28 @@ function Navbar() {
         <div className="flex items-center gap-3">
           <div className="hidden sm:flex items-center gap-2 mr-2">
             <button 
-              onClick={() => alert('Notifications coming soon!')}
+              onClick={() => toast('Notifications coming soon!', { icon: '🔔' })}
               className="btn-ghost relative hover:scale-110 hover:bg-white/10 transition-all"
             >
               <Bell className="w-5 h-5" />
               <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-sky-500 rounded-full border-2 border-slate-900" />
             </button>
-            <button 
-              onClick={() => alert('User profiles coming soon!')}
-              className="btn-ghost hover:scale-110 hover:bg-white/10 transition-all"
-            >
-              <User className="w-5 h-5" />
-            </button>
+            {user ? (
+              <Link 
+                to="/profile"
+                className="btn-ghost hover:scale-110 hover:bg-white/10 transition-all text-sky-400"
+              >
+                <User className="w-5 h-5" />
+              </Link>
+            ) : (
+              <Link 
+                to="/login"
+                className="btn-ghost hover:scale-110 hover:bg-white/10 transition-all"
+                onClick={() => toast('Join the community!', { icon: '👋' })}
+              >
+                <LogIn className="w-5 h-5" />
+              </Link>
+            )}
           </div>
 
           <button
@@ -246,6 +274,15 @@ function AppInner() {
   const location = useLocation();
   return (
     <div className="min-h-screen gradient-mesh selection:bg-sky-500/30">
+      <Toaster position="bottom-right" toastOptions={{
+        style: {
+          background: '#0f172a',
+          color: '#f8fafc',
+          border: '1px solid rgba(255,255,255,0.05)',
+          borderRadius: '1rem',
+          fontWeight: 'bold',
+        }
+      }} />
       <Navbar />
       <main className="pt-20">
         <AnimatePresence mode="wait">
@@ -265,6 +302,8 @@ function AppInner() {
               <Route path="/admin"       element={<Admin />}       />
               <Route path="/about"       element={<About />}       />
               <Route path="/stats"       element={<Stats />}       />
+              <Route path="/login"       element={<Login />}       />
+              <Route path="/profile"     element={<Profile />}     />
             </Routes>
           </motion.div>
         </AnimatePresence>

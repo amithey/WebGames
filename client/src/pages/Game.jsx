@@ -27,6 +27,7 @@ import {
   Cpu
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import toast from 'react-hot-toast';
 
 // ─── Components ──────────────────────────────────────────────────────────────
 
@@ -251,14 +252,16 @@ export default function Game() {
       try {
         await navigator.share(shareData);
       } catch (err) {
-        console.error('Error sharing:', err);
+        if (err.name !== 'AbortError') {
+          toast.error('Could not share');
+        }
       }
     } else {
       try {
         await navigator.clipboard.writeText(window.location.href);
-        alert('Game link copied to clipboard!');
+        toast.success('Link copied to clipboard!');
       } catch (err) {
-        console.error('Failed to copy:', err);
+        toast.error('Failed to copy link');
       }
     }
   };
