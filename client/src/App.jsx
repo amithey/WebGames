@@ -19,7 +19,13 @@ import {
   Info,
   Trophy,
   LayoutDashboard,
-  LogIn
+  LogIn,
+  ShieldCheck,
+  Mail,
+  Lock,
+  ArrowRight,
+  Github,
+  LogOut
 } from 'lucide-react';
 import Home from './pages/Home.jsx';
 import Upload from './pages/Upload.jsx';
@@ -55,8 +61,127 @@ function ThemeProvider({ children }) {
   );
 }
 
+// ─── Auth Modal ───────────────────────────────────────────────────────────────
+function AuthModal({ isOpen, onClose }) {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(false);
+
+  const handleAuth = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      if (isSignUp) {
+        const { error } = await supabase.auth.signUp({ email, password });
+        if (error) throw error;
+        toast.success('Check your email for the confirmation link!');
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        toast.success('Welcome back!');
+        onClose();
+      }
+    } catch (error) {
+      toast.error(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+      <motion.div 
+        initial={{ opacity: 0 }} 
+        animate={{ opacity: 1 }} 
+        exit={{ opacity: 0 }} 
+        onClick={onClose} 
+        className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm" 
+      />
+      <motion.div 
+        initial={{ scale: 0.9, opacity: 0, y: 20 }} 
+        animate={{ scale: 1, opacity: 1, y: 0 }} 
+        exit={{ scale: 0.9, opacity: 0, y: 20 }} 
+        className="relative w-full max-w-md p-8 rounded-[2.5rem] bg-slate-900 border border-white/10 shadow-2xl"
+      >
+        <button onClick={onClose} className="absolute top-6 right-6 text-slate-500 hover:text-white transition-colors">
+          <X className="w-6 h-6" />
+        </button>
+
+        <div className="text-center mb-8">
+          <div className="w-16 h-16 bg-gradient-to-br from-rose-400 to-orange-500 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-rose-500/20 text-white">
+            <Gamepad2 className="w-10 h-10" />
+          </div>
+          <h2 className="text-3xl font-black tracking-tight mb-2">
+            {isSignUp ? 'Join the community' : 'Welcome back'}
+          </h2>
+          <p className="text-slate-400 font-medium text-sm">
+            {isSignUp ? 'Start sharing your AI games today' : 'Log in to manage your creations'}
+          </p>
+        </div>
+
+        <form onSubmit={handleAuth} className="space-y-4">
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Email Address</label>
+            <div className="relative">
+              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+              <input 
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                className="input-field pl-12 h-12"
+                required
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Password</label>
+            <div className="relative">
+              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+              <input 
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className="input-field pl-12 h-12"
+                required
+              />
+            </div>
+          </div>
+
+          <button 
+            type="submit" 
+            disabled={loading}
+            className="btn-primary w-full h-12 text-sm hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 mt-4"
+          >
+            {loading ? 'Processing...' : (isSignUp ? 'Create Account' : 'Sign In')}
+            {!loading && <ArrowRight className="w-4 h-4 ml-2" />}
+          </button>
+        </form>
+
+        <div className="mt-8 pt-6 border-t border-white/5 text-center">
+          <p className="text-slate-400 text-xs font-medium mb-3">
+            {isSignUp ? 'Already have an account?' : "Don't have an account?"}
+          </p>
+          <button 
+            onClick={() => setIsSignUp(!isSignUp)}
+            className="text-sky-400 text-sm font-black hover:text-sky-300 transition-colors"
+          >
+            {isSignUp ? 'Log in instead' : 'Create an account'}
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
 // ─── Navbar ────────────────────────────────────────────────────────────────────
-function Navbar() {
+function Navbar({ onOpenAuth }) {
   const [scrolled, setScrolled]     = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [user, setUser]             = useState(null);
@@ -113,7 +238,11 @@ function Navbar() {
   }, []);
 
   const navLinks = [
-    { to: '/', label: 'Browse', icon: Gamepad2, onClick: () => document.getElementById('browse-section')?.scrollIntoView({ behavior: 'smooth' }) },
+    { to: '/', label: 'Browse', icon: Gamepad2, onClick: () => {
+      if (location.pathname === '/') {
+        document.getElementById('browse-section')?.scrollIntoView({ behavior: 'smooth' });
+      }
+    }},
     { to: '/leaderboard', label: 'Leaderboard', icon: Trophy },
     { to: '/about', label: 'About', icon: Info },
   ];
@@ -132,7 +261,7 @@ function Navbar() {
           </motion.div>
           <div className="flex items-center gap-2">
             <span className="text-xl font-black tracking-tighter animated-gradient-text leading-none">WebGames</span>
-            <span className="text-[10px] font-medium text-slate-500 mt-1">v2.1</span>
+            <span className="text-[10px] font-bold text-slate-500/50 mt-1 uppercase tracking-widest">v2.1</span>
           </div>
         </Link>
 
@@ -162,7 +291,7 @@ function Navbar() {
               `}
             >
               <ShieldCheck className="w-4 h-4" />
-              Admin
+              Admin Panel
             </NavLink>
           )}
         </div>
@@ -205,13 +334,12 @@ function Navbar() {
                 <User className="w-5 h-5" />
               </Link>
             ) : (
-              <Link 
-                to="/login"
+              <button 
+                onClick={onOpenAuth}
                 className="btn-ghost hover:scale-110 hover:bg-white/10 transition-all"
-                onClick={() => toast('Join the community!', { icon: '👋' })}
               >
-                <LogIn className="w-5 h-5" />
-              </Link>
+                <User className="w-5 h-5" />
+              </button>
             )}
           </div>
 
@@ -257,11 +385,29 @@ function Navbar() {
                   <span className="font-bold">{label}</span>
                 </NavLink>
               ))}
+              {isAdmin && (
+                <NavLink 
+                  to="/admin"
+                  className="flex items-center gap-3 p-3 rounded-xl text-emerald-400 hover:bg-emerald-500/5"
+                >
+                  <ShieldCheck className="w-5 h-5" />
+                  <span className="font-bold">Admin Panel</span>
+                </NavLink>
+              )}
               <hr className="my-2 border-white/5" />
               <Link to="/upload" className="btn-primary w-full py-3">
                 <UploadIcon className="w-5 h-5" />
                 <span>Upload a Game</span>
               </Link>
+              {!user && (
+                <button 
+                  onClick={onOpenAuth}
+                  className="flex items-center gap-3 p-3 rounded-xl text-sky-400 hover:bg-sky-500/5"
+                >
+                  <LogIn className="w-5 h-5" />
+                  <span className="font-bold">Sign In</span>
+                </button>
+              )}
             </div>
           </motion.div>
         )}
@@ -333,6 +479,8 @@ function Footer() {
 
 function AppInner() {
   const location = useLocation();
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+
   return (
     <div className="min-h-screen gradient-mesh selection:bg-sky-500/30">
       <Toaster position="bottom-right" toastOptions={{
@@ -344,7 +492,14 @@ function AppInner() {
           fontWeight: 'bold',
         }
       }} />
-      <Navbar />
+      <Navbar onOpenAuth={() => setIsAuthModalOpen(true)} />
+      
+      <AnimatePresence>
+        {isAuthModalOpen && (
+          <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
+        )}
+      </AnimatePresence>
+
       <main className="pt-20">
         <AnimatePresence mode="wait">
           <motion.div

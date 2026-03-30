@@ -7,6 +7,7 @@ const { v4: uuidv4 } = require('uuid');
 const db       = require('../db');
 const { uploadFile, deleteFolder, getMimeType } = require('../storage');
 const { uploadLimiter, interactionLimiter } = require('../middleware/rateLimiter');
+const { optionalAuth } = require('../middleware/auth');
 
 // ─── Input sanitization helpers ──────────────────────────────────────────────
 
@@ -270,10 +271,59 @@ router.get('/:id/play', async (req, res) => {
   }
 });
 
+// ─── GET /api/games/:id/like-status ──────────────────────────────────────────
+
+router.get('/:id/like-status', optionalAuth, async (req, res) => {
+  try {
+    if (!req.user) return res.json({ liked: false });
+    const { rows } = await db.query(
+      'SELECT 1 FROM user_likes WHERE user_id = $1 AND game_id = $2',
+      [req.user.userId, req.params.id]
+    );
+    res.json({ liked: rows.length > 0 });
+  } catch (err) {
+    console.error('Error checking like status:', err);
+    res.status(500).json({ error: 'Failed to check like status' });
+  }
+});
+
 // ─── POST /api/games/:id/like ─────────────────────────────────────────────────
 
-router.post('/:id/like', interactionLimiter, async (req, res) => {
+router.post('/:id/like', interactionLimiter, optionalAuth, async (req, res) => {
   try {
+    // If logged in, track per-user and prevent duplicates
+    if (req.user) {
+      const { rows: existing } = await db.query(
+        'SELECT 1 FROM user_likes WHERE user_id = $1 AND game_id = $2',
+        [req.user.userId, req.params.id]
+      );
+      if (existing.length > 0) {
+        return res.status(409).json({ error: 'Already liked' });
+      }
+      await db.query(
+        'INSERT INTO user_likes (user_id, game_id) VALUES ($1, $2)',
+        [req.user.userId, req.params.id]
+      );
+
+      // Create notification for game author
+      try {
+        const { rows: [game] } = await db.query(
+          'SELECT author FROM games WHERE id = $1', [req.params.id]
+        );
+        if (game?.author) {
+          const { rows: [owner] } = await db.query(
+            'SELECT id FROM users WHERE LOWER(username) = LOWER($1)', [game.author]
+          );
+          if (owner && owner.id !== req.user.userId) {
+            await db.query(
+              'INSERT INTO notifications (user_id, type, message, game_id) VALUES ($1, $2, $3, $4)',
+              [owner.id, 'like', `${req.user.username} liked your game`, req.params.id]
+            );
+          }
+        }
+      } catch { /* notification failure is non-critical */ }
+    }
+
     const { rows: [updated] } = await db.query(
       'UPDATE games SET likes = likes + 1 WHERE id = $1 RETURNING likes',
       [req.params.id]
@@ -288,8 +338,15 @@ router.post('/:id/like', interactionLimiter, async (req, res) => {
 
 // ─── POST /api/games/:id/unlike ───────────────────────────────────────────────
 
-router.post('/:id/unlike', interactionLimiter, async (req, res) => {
+router.post('/:id/unlike', interactionLimiter, optionalAuth, async (req, res) => {
   try {
+    if (req.user) {
+      await db.query(
+        'DELETE FROM user_likes WHERE user_id = $1 AND game_id = $2',
+        [req.user.userId, req.params.id]
+      );
+    }
+
     const { rows: [updated] } = await db.query(
       'UPDATE games SET likes = GREATEST(likes - 1, 0) WHERE id = $1 RETURNING likes',
       [req.params.id]

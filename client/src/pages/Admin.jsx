@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
+import { supabase } from '../supabase';
 import { 
   LayoutDashboard, 
   Gamepad2, 
@@ -19,23 +20,28 @@ import {
   ShieldCheck,
   ChevronRight,
   Eye,
-  Heart
+  Heart,
+  Lock
 } from 'lucide-react';
-
-function getToken() { return sessionStorage.getItem('admin_token'); }
-function authHeaders() { return { Authorization: `Bearer ${getToken()}` }; }
+import { useNavigate } from 'react-router-dom';
 
 export default function Admin() {
-  const [password, setPassword] = useState('');
-  const [isAuthorized, setIsAuthorized] = useState(!!getToken());
+  const [session, setSession] = useState(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
   const [stats, setStats] = useState(null);
   const [games, setGames] = useState([]);
   const [reports, setReports] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const navigate = useNavigate();
+
+  const authHeaders = useCallback(() => {
+    return { Authorization: `Bearer ${session?.access_token}` };
+  }, [session]);
 
   const fetchAdminData = useCallback(async () => {
+    if (!session) return;
     setLoading(true);
     try {
       const [statsRes, gamesRes, reportsRes] = await Promise.all([
@@ -46,34 +52,43 @@ export default function Admin() {
       setStats(statsRes.data);
       setGames(gamesRes.data);
       setReports(reportsRes.data);
-      setIsAuthorized(true);
     } catch (err) {
-      if (err.response?.status === 401) handleLogout();
+      if (err.response?.status === 403) setError('You do not have permission to view this page.');
+      else if (err.response?.status === 401) navigate('/');
     } finally {
       setLoading(false);
     }
+  }, [session, authHeaders, navigate]);
+
+  useEffect(() => {
+    const checkAdmin = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setSession(session);
+      
+      if (session?.user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('is_admin')
+          .eq('id', session.user.id)
+          .single();
+        
+        if (profile?.is_admin) {
+          setIsAdmin(true);
+          setLoading(false);
+        } else {
+          setIsAdmin(false);
+          setLoading(false);
+        }
+      } else {
+        setIsAdmin(false);
+        setLoading(false);
+      }
+    };
+
+    checkAdmin();
   }, []);
 
-  useEffect(() => { if (isAuthorized) fetchAdminData(); }, [isAuthorized, fetchAdminData]);
-
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      const res = await axios.post('/api/admin/login', { password });
-      sessionStorage.setItem('admin_token', res.data.token);
-      setIsAuthorized(true);
-    } catch (err) {
-      setError('Invalid admin credentials');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleLogout = () => {
-    sessionStorage.removeItem('admin_token');
-    setIsAuthorized(false);
-  };
+  useEffect(() => { if (isAdmin && session) fetchAdminData(); }, [isAdmin, session, fetchAdminData]);
 
   const toggleFeatured = async (id) => {
     try {
@@ -90,27 +105,24 @@ export default function Admin() {
     } catch (_) {}
   };
 
-  if (!isAuthorized) {
+  if (loading) {
     return (
-      <div className="min-h-[80vh] flex items-center justify-center p-4">
+      <div className="min-h-[60vh] flex items-center justify-center">
+        <div className="w-12 h-12 border-4 border-sky-500/20 border-t-sky-500 rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <div className="min-h-[80vh] flex items-center justify-center p-4 text-center">
         <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="w-full max-w-md p-10 rounded-[2.5rem] bg-slate-900 border border-white/5 shadow-2xl">
-          <div className="w-16 h-16 bg-sky-500/10 rounded-2xl flex items-center justify-center mx-auto mb-8">
-            <ShieldCheck className="w-8 h-8 text-sky-400" />
+          <div className="w-16 h-16 bg-rose-500/10 rounded-2xl flex items-center justify-center mx-auto mb-8">
+            <Lock className="w-8 h-8 text-rose-500" />
           </div>
-          <h1 className="text-3xl font-black text-center mb-2">Admin Terminal</h1>
-          <p className="text-slate-500 text-center font-bold text-sm mb-8 uppercase tracking-widest">Restricted Access</p>
-          <form onSubmit={handleLogin} className="space-y-4">
-            <input 
-              type="password" 
-              placeholder="Enter Access Key"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="input-field h-14 text-center tracking-[0.5em]"
-              autoFocus
-            />
-            {error && <p className="text-rose-500 text-xs font-bold text-center">{error}</p>}
-            <button className="btn-primary w-full h-14">Initialize Session</button>
-          </form>
+          <h1 className="text-3xl font-black mb-4">Access Denied</h1>
+          <p className="text-slate-400 font-medium mb-8">This terminal is restricted to platform administrators only.</p>
+          <button onClick={() => navigate('/')} className="btn-primary w-full h-14">Return to Platform</button>
         </motion.div>
       </div>
     );
@@ -125,7 +137,7 @@ export default function Admin() {
             <div className="w-8 h-8 rounded-lg bg-sky-500 flex items-center justify-center font-black text-white">A</div>
             <span className="font-black text-white">System Admin</span>
           </div>
-          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Connected via SSL</p>
+          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest truncate">{session?.user?.email}</p>
         </div>
 
         {[
@@ -146,12 +158,6 @@ export default function Admin() {
             {item.badge > 0 && <span className="px-2 py-0.5 rounded-md bg-rose-500 text-white text-[10px]">{item.badge}</span>}
           </button>
         ))}
-
-        <div className="pt-8 mt-8 border-t border-white/5">
-          <button onClick={handleLogout} className="w-full flex items-center gap-3 p-4 rounded-2xl font-black text-sm text-rose-500 hover:bg-rose-500/5 transition-all">
-            <LogOut className="w-5 h-5" /> Terminate Session
-          </button>
-        </div>
       </aside>
 
       {/* Main Content */}
@@ -218,10 +224,6 @@ export default function Admin() {
                   <div>
                     <h2 className="text-4xl font-black tracking-tight mb-2">Game Library</h2>
                     <p className="text-slate-400 font-medium">Curate and moderate content.</p>
-                  </div>
-                  <div className="relative">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-                    <input placeholder="Filter games..." className="input-field pl-12 h-12 w-64 bg-slate-900 border-white/5" />
                   </div>
                 </header>
 
@@ -311,7 +313,6 @@ export default function Admin() {
                           </div>
                         </div>
                         <div className="flex items-center gap-3">
-                          <button className="h-12 px-6 rounded-xl bg-slate-950 border border-white/5 text-slate-400 font-bold hover:text-white transition-all">Dismiss</button>
                           <button onClick={() => deleteGame(report.game_id)} className="h-12 px-6 rounded-xl bg-rose-500 text-white font-black shadow-lg shadow-rose-500/20">Delete Game</button>
                         </div>
                       </div>

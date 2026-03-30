@@ -87,14 +87,16 @@ app.get('/api/health', async (_req, res) => {
 
 // ── Routes (lazy-loaded to catch require-time crashes) ───────────────────────
 try {
-  const gamesRouter    = require('./routes/games');
-  const creatorsRouter = require('./routes/creators');
-  const adminRouter    = require('./routes/admin');
+  const gamesRouter       = require('./routes/games');
+  const creatorsRouter    = require('./routes/creators');
+  const adminRouter       = require('./routes/admin');
   const collectionsRouter = require('./routes/collections');
+  const authRouter        = require('./routes/auth');
 
-  app.use('/api/games',    gamesRouter);
-  app.use('/api/creators', creatorsRouter);
-  app.use('/api/admin',    adminRouter);
+  app.use('/api/auth',        authRouter);
+  app.use('/api/games',       gamesRouter);
+  app.use('/api/creators',    creatorsRouter);
+  app.use('/api/admin',       adminRouter);
   app.use('/api/collections', collectionsRouter);
 } catch (err) {
   console.error('Failed to load routes:', err);

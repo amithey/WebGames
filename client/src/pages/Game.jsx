@@ -26,6 +26,7 @@ import {
   Zap,
   Cpu
 } from 'lucide-react';
+import { supabase } from '../supabase';
 import confetti from 'canvas-confetti';
 import toast from 'react-hot-toast';
 
@@ -268,7 +269,10 @@ export default function Game() {
 
   const handleLike = async () => {
     try {
-      const res = await axios.post(`/api/games/${id}/${liked ? 'unlike' : 'like'}`);
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers = session ? { Authorization: `Bearer ${session.access_token}` } : {};
+      
+      const res = await axios.post(`/api/games/${id}/${liked ? 'unlike' : 'like'}`, {}, { headers });
       setLikes(res.data.likes);
       setLiked(!liked);
       if (!liked) {
@@ -277,7 +281,9 @@ export default function Game() {
       } else {
         localStorage.removeItem(`liked_${id}`);
       }
-    } catch (_) {}
+    } catch (_) {
+      toast.error('Failed to update like');
+    }
   };
 
   const handlePostComment = async (e) => {
