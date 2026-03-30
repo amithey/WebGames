@@ -175,4 +175,16 @@ router.patch('/games/:id/feature', async (req, res) => {
   }
 });
 
+// ─── GET /api/admin/reports ──────────────────────────────────────────────────
+
+router.get('/reports', async (req, res) => {
+  try {
+    const { rows } = await db.query('SELECT * FROM reports ORDER BY created_at DESC');
+    res.json(rows);
+  } catch (err) {
+    console.error('Error fetching reports:', err);
+    res.status(500).json({ error: 'Failed to fetch reports' });
+  }
+});
+
 module.exports = router;

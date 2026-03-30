@@ -1,688 +1,372 @@
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
+import { motion, AnimatePresence } from 'framer-motion';
+import Tilt from 'react-parallax-tilt';
+import { 
+  Search, 
+  Filter, 
+  ChevronRight, 
+  Play, 
+  Heart, 
+  Eye, 
+  Star, 
+  TrendingUp, 
+  Sparkles,
+  Trophy,
+  Gamepad2,
+  Cpu,
+  Zap,
+  Clock,
+  LayoutGrid,
+  ListFilter,
+  X,
+  Upload as UploadIcon
+} from 'lucide-react';
 
-// ─── Scroll Reveal Hook ───────────────────────────────────────────────────────
-function useReveal(threshold = 0.08) {
-  const ref = useRef(null);
-  const [visible, setVisible] = useState(false);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const obs = new IntersectionObserver(
-      ([e]) => { if (e.isIntersecting) { setVisible(true); obs.disconnect(); } },
-      { threshold }
-    );
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, [threshold]);
-  return [ref, visible];
-}
+// ─── Constants ───────────────────────────────────────────────────────────────
 
-// ─── Recently Played ──────────────────────────────────────────────────────────
-function getRecentlyPlayed() {
-  try { return JSON.parse(localStorage.getItem('wg_recently_played') || '[]'); }
-  catch { return []; }
-}
-
-// ─── Placeholder colors ───────────────────────────────────────────────────────
-const PLACEHOLDER_COLORS = [
-  'from-purple-600 to-pink-600',
-  'from-cyan-600 to-blue-600',
-  'from-green-600 to-teal-600',
-  'from-orange-600 to-red-600',
-  'from-pink-600 to-rose-600',
-  'from-indigo-600 to-purple-600',
-  'from-yellow-600 to-orange-600',
-  'from-teal-600 to-cyan-600',
+const AI_TOOLS = [
+  'Claude', 'ChatGPT', 'Gemini', 'Copilot', 'v0', 'Bolt', 'Cursor', 'Replit', 'Other'
 ];
-function getGradient(id) {
-  let h = 0;
-  for (let i = 0; i < id.length; i++) h = id.charCodeAt(i) + ((h << 5) - h);
-  return PLACEHOLDER_COLORS[Math.abs(h) % PLACEHOLDER_COLORS.length];
-}
 
-// ─── Icons ────────────────────────────────────────────────────────────────────
-function HeartIcon({ filled }) {
-  return filled ? (
-    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-      <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
-    </svg>
-  ) : (
-    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-    </svg>
-  );
-}
+const CATEGORIES = [
+  { id: 'action', label: 'Action', icon: Zap },
+  { id: 'puzzle', label: 'Puzzle', icon: LayoutGrid },
+  { id: 'arcade', label: 'Arcade', icon: Gamepad2 },
+  { id: 'rpg', label: 'RPG', icon: Trophy },
+  { id: 'simulation', label: 'Simulation', icon: Cpu },
+];
 
-function StarIcon({ filled }) {
+const AI_TOOL_COLORS = {
+  'Claude': 'from-orange-400 to-red-500',
+  'ChatGPT': 'from-emerald-400 to-teal-600',
+  'Gemini': 'from-blue-400 to-indigo-600',
+  'Copilot': 'from-sky-400 to-blue-500',
+  'v0': 'from-slate-700 to-slate-900',
+  'Bolt': 'from-yellow-400 to-orange-500',
+  'Cursor': 'from-cyan-400 to-blue-500',
+  'Replit': 'from-orange-500 to-red-600',
+  'Other': 'from-slate-400 to-slate-600',
+};
+
+// ─── Components ──────────────────────────────────────────────────────────────
+
+function AIBadge({ tool }) {
+  const gradient = AI_TOOL_COLORS[tool] || AI_TOOL_COLORS['Other'];
   return (
-    <svg className={`w-3.5 h-3.5 ${filled ? 'text-yellow-400' : 'text-slate-600'}`} fill="currentColor" viewBox="0 0 20 20">
-      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-    </svg>
-  );
-}
-
-// ─── Game Card ────────────────────────────────────────────────────────────────
-function GameCard({ game, onTagClick }) {
-  const navigate  = useNavigate();
-  const [imgErr, setImgErr] = useState(false);
-  const [gradient]          = useState(() => getGradient(game.id));
-  const [likes, setLikes]   = useState(game.likes ?? 0);
-  const [liked, setLiked]   = useState(() => {
-    try { return localStorage.getItem(`liked_${game.id}`) === '1'; } catch { return false; }
-  });
-  const [liking, setLiking] = useState(false);
-
-  const formattedDate = new Date(game.createdAt).toLocaleDateString('en-US', {
-    month: 'short', day: 'numeric', year: 'numeric',
-  });
-
-  const thumbSrc = game.thumbnail
-    ? (game.thumbnail.startsWith('http') ? game.thumbnail : `/${game.thumbnail}`)
-    : null;
-  const hasThumbnail = thumbSrc && !imgErr;
-
-  async function handleLike(e) {
-    e.stopPropagation();
-    if (liked || liking) return;
-    setLiking(true);
-    try {
-      const res = await axios.post(`/api/games/${game.id}/like`);
-      setLikes(res.data.likes);
-      setLiked(true);
-      localStorage.setItem(`liked_${game.id}`, '1');
-    } catch (_) {}
-    setLiking(false);
-  }
-
-  return (
-    <article
-      className="card cursor-pointer group relative"
-      onClick={() => navigate(`/games/${game.id}`)}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => e.key === 'Enter' && navigate(`/games/${game.id}`)}
-      aria-label={`Play ${game.title}`}
-    >
-      {game.featured && (
-        <div className="absolute -top-2 -left-2 z-10 bg-yellow-500 text-black text-[10px] font-bold px-2 py-0.5 rounded-lg shadow-lg flex items-center gap-1">
-          ⭐ FEATURED
-        </div>
-      )}
-
-      {/* Thumbnail */}
-      <div className="relative w-full aspect-video overflow-hidden" style={{ background: 'var(--bg-elevated)' }}>
-        {hasThumbnail ? (
-          <img
-            src={thumbSrc}
-            alt={`${game.title} thumbnail`}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-            onError={() => setImgErr(true)}
-          />
-        ) : (
-          <div className={`w-full h-full bg-gradient-to-br ${gradient} flex items-center justify-center`}>
-            <svg className="w-12 h-12 text-white/25" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </div>
-        )}
-
-        {/* Hover play overlay */}
-        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all duration-300 flex items-center justify-center">
-          <div className="opacity-0 group-hover:opacity-100 transition-all duration-300 scale-75 group-hover:scale-100 bg-violet-600/90 rounded-full p-4 shadow-xl shadow-violet-500/40">
-            <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M8 5v14l11-7z" />
-            </svg>
-          </div>
-        </div>
-
-        {/* Play count badge */}
-        <div className="absolute top-2 right-2 bg-black/60 backdrop-blur-sm text-white text-xs px-2 py-0.5 rounded-full flex items-center gap-1">
-          <svg className="w-3 h-3 text-violet-400" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
-          {game.playCount.toLocaleString()}
-        </div>
-      </div>
-
-      {/* Body */}
-      <div className="p-4">
-        <div className="flex justify-between items-start mb-1.5 gap-2">
-          <h3 className="font-semibold text-base truncate group-hover:text-violet-400 transition-colors" style={{ color: 'var(--text-1)' }}>
-            {game.title}
-          </h3>
-          {game.ratingCount > 0 && (
-            <div className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] shrink-0" style={{ background: 'var(--glass-bg)', color: 'var(--text-2)', border: '1px solid var(--border)' }}>
-              <StarIcon filled />
-              <span>{game.avgRating}</span>
-            </div>
-          )}
-        </div>
-
-        {game.description && (
-          <p className="text-sm mb-3 line-clamp-2 leading-relaxed" style={{ color: 'var(--text-2)' }}>
-            {game.description}
-          </p>
-        )}
-
-        {game.tags && game.tags.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 mb-3">
-            {game.tags.slice(0, 3).map(tag => (
-              <button
-                key={tag}
-                className="tag-badge hover:bg-violet-500/20 transition-colors"
-                onClick={e => { e.stopPropagation(); onTagClick(tag); }}
-              >
-                {tag}
-              </button>
-            ))}
-            {game.tags.length > 3 && <span className="tag-badge">+{game.tags.length - 3}</span>}
-          </div>
-        )}
-
-        <div className="flex items-center justify-between text-xs pt-2" style={{ borderTop: '1px solid var(--border)', color: 'var(--text-3)' }}>
-          <span className="truncate max-w-[50%]">
-            {game.author ? (
-              <Link
-                to={`/creator/${encodeURIComponent(game.author)}`}
-                onClick={e => e.stopPropagation()}
-                className="flex items-center gap-1 hover:text-violet-400 transition-colors"
-              >
-                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-                {game.author}
-              </Link>
-            ) : (
-              <span className="italic">Anonymous</span>
-            )}
-          </span>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={handleLike}
-              disabled={liked || liking}
-              className={`flex items-center gap-1 transition-colors ${liked ? 'text-pink-400 cursor-default' : 'hover:text-pink-400'}`}
-            >
-              <HeartIcon filled={liked} />
-              {likes.toLocaleString()}
-            </button>
-            <span>{formattedDate}</span>
-          </div>
-        </div>
-      </div>
-    </article>
-  );
-}
-
-// ─── Skeleton Card ────────────────────────────────────────────────────────────
-function SkeletonCard() {
-  return (
-    <div className="card overflow-hidden">
-      <div className="w-full aspect-video skeleton" style={{ borderRadius: 0 }} />
-      <div className="p-4 space-y-3">
-        <div className="h-4 skeleton w-3/4" />
-        <div className="h-3 skeleton w-full" />
-        <div className="h-3 skeleton w-5/6" />
-        <div className="flex gap-2 pt-1">
-          <div className="h-5 skeleton rounded-full w-16" />
-          <div className="h-5 skeleton rounded-full w-12" />
-        </div>
-      </div>
+    <div className={`px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-tighter text-white bg-gradient-to-r ${gradient} shadow-sm`}>
+      {tool}
     </div>
   );
 }
 
-// ─── Recent Game Mini Card ────────────────────────────────────────────────────
-function RecentCard({ game }) {
+function GameCard({ game }) {
   const navigate = useNavigate();
-  const [imgErr, setImgErr] = useState(false);
-  const [gradient] = useState(() => getGradient(game.id));
-  const thumb = game.thumbnail?.startsWith('http') ? game.thumbnail : null;
+  const [isHovered, setIsHovered] = useState(false);
 
   return (
-    <button
-      onClick={() => navigate(`/games/${game.id}`)}
-      className="flex-shrink-0 w-36 text-left group"
+    <Tilt
+      tiltMaxAngleX={10}
+      tiltMaxAngleY={10}
+      perspective={1000}
+      scale={1.02}
+      transitionSpeed={1500}
+      gyroscope={true}
+      className="h-full"
     >
-      <div className="w-full aspect-video rounded-xl overflow-hidden mb-2 transition-all duration-200 group-hover:-translate-y-1 group-hover:shadow-lg group-hover:shadow-violet-500/20" style={{ background: 'var(--bg-elevated)' }}>
-        {thumb && !imgErr ? (
-          <img src={thumb} alt={game.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" onError={() => setImgErr(true)} />
-        ) : (
-          <div className={`w-full h-full bg-gradient-to-br ${gradient} flex items-center justify-center`}>
-            <svg className="w-5 h-5 text-white/30" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+      <motion.article
+        layout
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="card h-full flex flex-col group cursor-pointer"
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+        onClick={() => navigate(`/games/${game.id}`)}
+      >
+        <div className="relative aspect-video overflow-hidden bg-slate-950">
+          <img 
+            src={game.thumbnailUrl || game.thumbnail || `https://source.unsplash.com/random/400x225?game,${game.id}`} 
+            alt={game.title}
+            className={`w-full h-full object-cover transition-transform duration-700 ${isHovered ? 'scale-110' : 'scale-100'}`}
+          />
+          <div className={`absolute inset-0 bg-slate-900/60 transition-opacity duration-300 flex items-center justify-center ${isHovered ? 'opacity-100' : 'opacity-0'}`}>
+            <motion.div
+              initial={false}
+              animate={{ scale: isHovered ? 1 : 0.8 }}
+              className="w-12 h-12 bg-white rounded-full flex items-center justify-center text-slate-900 shadow-xl"
+            >
+              <Play className="w-6 h-6 fill-current" />
+            </motion.div>
           </div>
-        )}
-      </div>
-      <p className="text-xs font-medium truncate leading-tight" style={{ color: 'var(--text-1)' }}>{game.title}</p>
-      {game.author && <p className="text-[10px] truncate mt-0.5" style={{ color: 'var(--text-3)' }}>{game.author}</p>}
-    </button>
+          <div className="absolute top-3 left-3 flex flex-col gap-2">
+            {game.aiTool && <AIBadge tool={game.aiTool} />}
+            {game.featured && (
+              <div className="px-2 py-0.5 rounded-md text-[9px] font-black uppercase bg-yellow-400 text-black flex items-center gap-1">
+                <Star className="w-2.5 h-2.5 fill-current" />
+                Featured
+              </div>
+            )}
+          </div>
+          <div className="absolute bottom-3 right-3 px-2 py-1 bg-black/60 backdrop-blur-md rounded-lg text-[10px] font-bold text-white flex items-center gap-1.5">
+            <Eye className="w-3 h-3 text-sky-400" />
+            {game.playCount.toLocaleString()}
+          </div>
+        </div>
+        <div className="p-5 flex-1 flex flex-col">
+          <div className="flex justify-between items-start mb-2 gap-2">
+            <h3 className="font-bold text-lg leading-tight group-hover:text-sky-400 transition-colors line-clamp-1">
+              {game.title}
+            </h3>
+            {game.avgRating > 0 && (
+              <div className="flex items-center gap-1 text-yellow-400 font-bold text-xs">
+                <Star className="w-3 h-3 fill-current" />
+                {game.avgRating}
+              </div>
+            )}
+          </div>
+          <p className="text-slate-400 text-sm line-clamp-2 mb-4 flex-1">
+            {game.description || 'No description provided.'}
+          </p>
+          <div className="flex items-center justify-between pt-4 border-t border-white/5">
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 rounded-full bg-slate-800 flex items-center justify-center text-[10px] font-bold text-slate-400">
+                {game.author?.[0]?.toUpperCase() || 'A'}
+              </div>
+              <span className="text-xs font-medium text-slate-400">{game.author || 'Anonymous'}</span>
+            </div>
+            <div className="flex items-center gap-1 text-xs text-rose-500 font-bold">
+              <Heart className="w-3.5 h-3.5 fill-current" />
+              {game.likes}
+            </div>
+          </div>
+        </div>
+      </motion.article>
+    </Tilt>
   );
 }
 
-// ─── Sort Options ─────────────────────────────────────────────────────────────
-const SORT_OPTIONS = [
-  { value: 'recent', label: 'Newest'      },
-  { value: 'liked',  label: 'Most Liked'  },
-  { value: 'played', label: 'Most Played' },
-  { value: 'rated',  label: 'Best Rated'  },
-  { value: 'alpha',  label: 'A-Z'         },
-];
+// ─── Main Page ──────────────────────────────────────────────────────────────
 
-// ─── Home Page ────────────────────────────────────────────────────────────────
 export default function Home() {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
 
-  const [games, setGames]           = useState([]);
-  const [loading, setLoading]       = useState(true);
-  const [error, setError]           = useState(null);
-  const [showAdvanced, setShowAdvanced] = useState(false);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const [recentlyPlayed]            = useState(getRecentlyPlayed);
-  const searchRef                   = useRef(null);
+  const [games, setGames] = useState([]);
+  const [collections, setCollections] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showFilters, setShowFilters] = useState(false);
+  
+  const query = searchParams.get('q') || '';
+  const sort = searchParams.get('sort') || 'recent';
+  const selAiTool = searchParams.get('aiTool') || '';
+  const selCategory = searchParams.get('category') || '';
 
-  const query      = searchParams.get('q') || '';
-  const sort       = searchParams.get('sort') || 'recent';
-  const selTags    = useMemo(() => searchParams.getAll('tag'), [searchParams]);
-  const minLikes   = searchParams.get('minLikes') || '';
-  const minPlays   = searchParams.get('minPlays') || '';
-
-  const fetchGames = useCallback(() => {
+  const fetchGames = useCallback(async () => {
     setLoading(true);
-    const p = new URLSearchParams();
-    if (query) p.set('search', query);
-    if (sort)  p.set('sort', sort);
-    selTags.forEach(t => p.append('tag', t));
-    if (minLikes) p.set('minLikes', minLikes);
-    if (minPlays) p.set('minPlays', minPlays);
-    axios.get(`/api/games?${p}`)
-      .then(res => { setGames(Array.isArray(res.data) ? res.data : []); setLoading(false); })
-      .catch(() => { setError('Failed to load games.'); setLoading(false); });
-  }, [query, sort, selTags, minLikes, minPlays]);
+    try {
+      const params = new URLSearchParams(searchParams);
+      const [gamesRes, collRes] = await Promise.all([
+        axios.get(`/api/games?${params.toString()}`),
+        axios.get('/api/collections')
+      ]);
+      setGames(gamesRes.data);
+      setCollections(collRes.data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  }, [searchParams]);
 
   useEffect(() => { fetchGames(); }, [fetchGames]);
 
-  const allTags = useMemo(() => {
-    const s = new Set();
-    games.forEach(g => (g.tags || []).forEach(t => s.add(t)));
-    return [...s].sort();
-  }, [games]);
+  const featuredGame = useMemo(() => games.find(g => g.featured) || games[0], [games]);
+  const trendingGames = useMemo(() => [...games].sort((a, b) => b.playCount - a.playCount).slice(0, 4), [games]);
 
-  const featuredGames = useMemo(() => games.filter(g => g.featured), [games]);
-
-  const suggestions = useMemo(() => {
-    if (!query || query.length < 2 || !showSuggestions) return [];
-    const q = query.toLowerCase();
-    return games.filter(g => g.title.toLowerCase().includes(q)).slice(0, 6);
-  }, [query, games, showSuggestions]);
-
-  const totalStats = useMemo(() => ({
-    plays: games.reduce((s, g) => s + (g.playCount || 0), 0),
-    likes: games.reduce((s, g) => s + (g.likes || 0), 0),
-  }), [games]);
-
-  const toggleTag = tag => {
-    const next = selTags.includes(tag) ? selTags.filter(t => t !== tag) : [...selTags, tag];
-    setSearchParams(prev => { prev.delete('tag'); next.forEach(t => prev.append('tag', t)); return prev; });
-  };
   const updateParam = (key, val) => {
-    setSearchParams(prev => { if (val) prev.set(key, val); else prev.delete(key); return prev; });
+    setSearchParams(prev => {
+      if (val) prev.set(key, val);
+      else prev.delete(key);
+      return prev;
+    });
   };
-  const clearFilters = () => setSearchParams({});
-  const hasFilters = query || selTags.length > 0 || minLikes || minPlays;
-
-  // Scroll reveal
-  const [featuredRef, featuredVis] = useReveal();
-  const [recentRef,   recentVis]   = useReveal();
-  const [browseRef,   browseVis]   = useReveal();
-  const [ctaRef,      ctaVis]      = useReveal();
 
   return (
-    <div>
-      {/* ─── Hero ──────────────────────────────────────────────────────────── */}
-      <section className="relative overflow-hidden min-h-[80vh] flex flex-col items-center justify-center text-center px-4 py-24">
-        <div className="orb orb-1" />
-        <div className="orb orb-2" />
-        <div className="orb orb-3" />
-
-        {/* Content (above orbs) */}
-        <div className="relative z-10 flex flex-col items-center">
-          {/* Live badge */}
-          <div
-            className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-widest text-violet-400 mb-8"
-            style={{ background: 'rgba(139,92,246,0.10)', border: '1px solid rgba(139,92,246,0.22)' }}
-          >
-            <span className="w-2 h-2 bg-violet-400 rounded-full animate-pulse" />
-            {loading ? 'Loading...' : `${games.length} game${games.length !== 1 ? 's' : ''} live now`}
-          </div>
-
-          <h1 className="text-5xl sm:text-6xl lg:text-7xl xl:text-8xl font-black mb-6 leading-[0.92] tracking-tighter">
-            <span className="animated-gradient-text glow-text">
-              Upload. Play.<br />Share.
-            </span>
-            <br />
-            <span style={{ color: 'var(--text-1)' }}>Browser Games.</span>
-          </h1>
-
-          <p className="text-lg sm:text-xl max-w-2xl mx-auto mb-10 leading-relaxed font-medium" style={{ color: 'var(--text-2)' }}>
-            The ultimate community driven platform for browser games. Discover, play, and share for free. No account needed.
-          </p>
-
-          <div className="flex flex-col sm:flex-row items-center gap-4 mb-16 w-full sm:w-auto">
-            <Link to="/upload" className="btn-primary text-base px-8 py-3.5 w-full sm:w-auto">
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-              </svg>
-              Upload Your Game
+    <div className="pb-20">
+      {/* ─── Hero Section ─────────────────────────────────────────────────── */}
+      <section className="relative pt-10 pb-24 overflow-hidden">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-sky-500/10 border border-sky-500/20 text-sky-400 text-xs font-black uppercase tracking-widest mb-8">
+            <Sparkles className="w-4 h-4 animate-pulse" />
+            Where AI Built Games Come to Life
+          </motion.div>
+          <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="text-6xl sm:text-7xl lg:text-8xl font-black tracking-tighter mb-8 leading-[0.9]">
+            The Future of <br />
+            <span className="animated-gradient-text">Gaming is AI.</span>
+          </motion.h1>
+          <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="text-xl text-slate-400 max-w-2xl mx-auto mb-12 font-medium">
+            Discover thousands of unique browser games created using advanced AI tools.
+          </motion.p>
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <Link to="/upload" className="btn-primary px-10 py-4 text-lg w-full sm:w-auto">
+              <UploadIcon className="w-6 h-6" /> Upload Your Game
             </Link>
-            <button
-              onClick={() => {
-                searchRef.current?.focus();
-                searchRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-              }}
-              className="btn-secondary text-base px-8 py-3.5 w-full sm:w-auto"
-            >
+            <button onClick={() => document.getElementById('browse-section').scrollIntoView({ behavior: 'smooth' })} className="btn-secondary px-10 py-4 text-lg w-full sm:w-auto">
               Explore Games
             </button>
-          </div>
-
-          {/* Stats row */}
-          {!loading && (
-            <div className="flex items-center gap-8 sm:gap-12">
-              {[
-                { label: 'Games',       value: games.length.toLocaleString()       },
-                { label: 'Total Plays', value: totalStats.plays.toLocaleString()   },
-                { label: 'Total Likes', value: totalStats.likes.toLocaleString()   },
-              ].map(({ label, value }) => (
-                <div key={label} className="text-center">
-                  <div className="text-2xl font-black animated-gradient-text">{value}</div>
-                  <div className="text-xs uppercase tracking-wider mt-0.5 font-medium" style={{ color: 'var(--text-3)' }}>{label}</div>
-                </div>
-              ))}
-            </div>
-          )}
+          </motion.div>
         </div>
-
-        {/* Bottom fade */}
-        <div className="absolute bottom-0 left-0 right-0 h-32 pointer-events-none" style={{ background: 'linear-gradient(to bottom, transparent, var(--bg-page))' }} />
+        <div className="absolute inset-0 z-0 pointer-events-none opacity-50">
+          <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-sky-500/20 rounded-full blur-[120px] animate-pulse" />
+          <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-indigo-500/20 rounded-full blur-[120px] animate-pulse" style={{ animationDelay: '2s' }} />
+        </div>
       </section>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-
-        {/* ─── Featured ────────────────────────────────────────────────────── */}
-        {!loading && featuredGames.length > 0 && (
-          <section ref={featuredRef} className={`mb-16 reveal ${featuredVis ? 'visible' : ''}`}>
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h2 className="section-heading flex items-center gap-2">⭐ Featured Games</h2>
-                <p className="section-sub">Handpicked by our team</p>
-              </div>
+        
+        {/* ─── Spotlight Section ────────────────────────────────────────────── */}
+        {!loading && featuredGame && (
+          <section className="mb-24">
+            <div className="flex items-center gap-3 mb-8">
+              <div className="p-2 bg-yellow-400/10 rounded-xl"><Trophy className="w-6 h-6 text-yellow-400" /></div>
+              <h2 className="text-3xl font-black tracking-tight">Game of the Week</h2>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {featuredGames.slice(0, 3).map(g => (
-                <GameCard key={g.id} game={g} onTagClick={toggleTag} />
+            <Link to={`/games/${featuredGame.id}`} className="group">
+              <div className="relative aspect-[21/9] rounded-3xl overflow-hidden border border-white/10 shadow-2xl">
+                <img src={featuredGame.thumbnailUrl || featuredGame.thumbnail} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105" alt="" />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent flex flex-col justify-end p-10">
+                  <div className="flex items-center gap-3 mb-4">
+                    {featuredGame.aiTool && <AIBadge tool={featuredGame.aiTool} />}
+                    <div className="px-3 py-1 rounded-lg bg-white/10 backdrop-blur-md text-xs font-bold text-white flex items-center gap-2">
+                      <Star className="w-3.5 h-3.5 fill-current text-yellow-400" /> Staff Pick
+                    </div>
+                  </div>
+                  <h3 className="text-4xl sm:text-5xl font-black text-white mb-4 group-hover:text-sky-400 transition-colors">{featuredGame.title}</h3>
+                  <div className="flex items-center gap-6">
+                    <div className="btn-primary py-3 px-8"><Play className="w-5 h-5 fill-current" /> Play Now</div>
+                    <div className="flex items-center gap-4 text-white font-bold">
+                      <div className="flex items-center gap-2"><Eye className="w-5 h-5 text-sky-400" /> {featuredGame.playCount.toLocaleString()}</div>
+                      <div className="flex items-center gap-2"><Heart className="w-5 h-5 text-rose-500 fill-current" /> {featuredGame.likes.toLocaleString()}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </Link>
+          </section>
+        )}
+
+        {/* ─── Trending Row ────────────────────────────────────────────────── */}
+        <section className="mb-24">
+          <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-rose-500/10 rounded-xl"><TrendingUp className="w-6 h-6 text-rose-500" /></div>
+              <h2 className="text-3xl font-black tracking-tight">Trending Now</h2>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {trendingGames.map(game => <GameCard key={game.id} game={game} />)}
+          </div>
+        </section>
+
+        {/* ─── Collections Section ─────────────────────────────────────────── */}
+        {collections.length > 0 && (
+          <section className="mb-24">
+            <div className="flex items-center gap-3 mb-8">
+              <div className="p-2 bg-indigo-500/10 rounded-xl"><Sparkles className="w-6 h-6 text-indigo-400" /></div>
+              <h2 className="text-3xl font-black tracking-tight">Curated Collections</h2>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              {collections.map(col => (
+                <div key={col.id} className="p-8 rounded-[2rem] bg-slate-900 border border-white/5 group cursor-pointer hover:border-sky-500/30 transition-all">
+                  <h3 className="text-2xl font-black text-white mb-2 group-hover:text-sky-400 transition-colors">{col.name}</h3>
+                  <p className="text-slate-400 text-sm font-medium mb-6 line-clamp-2">{col.description}</p>
+                  <div className="flex items-center gap-2 text-sky-500 font-bold text-xs uppercase tracking-widest">
+                    Explore Collection <ChevronRight className="w-4 h-4" />
+                  </div>
+                </div>
               ))}
             </div>
           </section>
         )}
 
-        {/* ─── Recently Played ─────────────────────────────────────────────── */}
-        {recentlyPlayed.length > 0 && (
-          <section ref={recentRef} className={`mb-16 reveal ${recentVis ? 'visible' : ''}`}>
-            <div className="flex items-center justify-between mb-5">
-              <div>
-                <h2 className="section-heading flex items-center gap-2">🕹️ Continue Playing</h2>
-                <p className="section-sub">Your recently played games</p>
-              </div>
-              <button
-                onClick={() => {
-                  try { localStorage.removeItem('wg_recently_played'); window.location.reload(); } catch {}
-                }}
-                className="text-xs transition-colors hover:text-red-400 flex items-center gap-1"
-                style={{ color: 'var(--text-3)' }}
-              >
-                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-                Clear
-              </button>
-            </div>
-            <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar">
-              {recentlyPlayed.map(g => <RecentCard key={g.id} game={g} />)}
-            </div>
-          </section>
-        )}
-
-        {/* ─── Browse All ──────────────────────────────────────────────────── */}
-        <section ref={browseRef} className={`reveal ${browseVis ? 'visible' : ''}`}>
-          <div className="flex items-center justify-between mb-6">
+        {/* ─── Browse Section ──────────────────────────────────────────────── */}
+        <section id="browse-section" className="scroll-mt-24">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-12">
             <div>
-              <h2 className="section-heading">All Games</h2>
-              <p className="section-sub">Discover the community's best</p>
+              <h2 className="text-4xl font-black tracking-tight mb-2">All Games</h2>
+              <p className="text-slate-400 font-medium">Discover the community's best creations</p>
             </div>
-          </div>
-
-          {/* Search + Sort */}
-          <div className="mb-6 space-y-3">
-            <div className="flex flex-col md:flex-row gap-3">
-              {/* Search with autocomplete */}
-              <div className="relative flex-1">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{ color: 'var(--text-3)' }}>
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                </div>
-                <input
-                  id="search-input"
-                  ref={searchRef}
-                  type="text"
-                  placeholder="Search games by title..."
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="relative flex-1 min-w-[300px]">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+                <input 
+                  type="text" 
+                  placeholder="Search games..."
                   value={query}
-                  onChange={e => updateParam('q', e.target.value)}
-                  onFocus={() => setShowSuggestions(true)}
-                  onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
-                  className="input-field pl-11 h-12"
-                  autoComplete="off"
+                  onChange={(e) => updateParam('q', e.target.value)}
+                  className="input-field pl-12 h-14 bg-slate-900 border-white/5"
                 />
-                {query && (
-                  <button
-                    onClick={() => updateParam('q', '')}
-                    className="absolute inset-y-0 right-12 flex items-center px-3 transition-colors"
-                    style={{ color: 'var(--text-3)' }}
-                  >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                )}
-                <button
-                  onClick={() => setShowAdvanced(v => !v)}
-                  className="absolute inset-y-0 right-0 pr-4 flex items-center transition-colors"
-                  style={{ color: showAdvanced ? '#a78bfa' : 'var(--text-3)' }}
-                  title="Advanced filters"
-                >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
-                  </svg>
-                </button>
-
-                {/* Autocomplete dropdown */}
-                {suggestions.length > 0 && (
-                  <div
-                    className="absolute top-full left-0 right-0 mt-1.5 rounded-xl overflow-hidden z-40 shadow-2xl"
-                    style={{ background: 'var(--bg-card)', border: '1px solid var(--border-strong)' }}
-                  >
-                    {suggestions.map(g => (
-                      <button
-                        key={g.id}
-                        onMouseDown={() => navigate(`/games/${g.id}`)}
-                        className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-violet-500/10"
-                        style={{ borderBottom: '1px solid var(--border)' }}
-                      >
-                        <div
-                          className="w-10 h-7 rounded-lg overflow-hidden flex-shrink-0"
-                          style={{ background: 'var(--bg-elevated)' }}
-                        >
-                          {g.thumbnail?.startsWith('http') ? (
-                            <img src={g.thumbnail} alt="" className="w-full h-full object-cover" />
-                          ) : (
-                            <div className={`w-full h-full bg-gradient-to-br ${getGradient(g.id)}`} />
-                          )}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="text-sm font-medium truncate" style={{ color: 'var(--text-1)' }}>{g.title}</div>
-                          {g.author && <div className="text-xs truncate" style={{ color: 'var(--text-3)' }}>by {g.author}</div>}
-                        </div>
-                        <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{ color: 'var(--text-3)' }}>
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                        </svg>
-                      </button>
-                    ))}
-                  </div>
-                )}
               </div>
-
-              {/* Sort */}
-              <div
-                className="flex items-center gap-1 rounded-xl p-1 shrink-0 overflow-x-auto no-scrollbar"
-                style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}
-              >
-                {SORT_OPTIONS.map(opt => (
-                  <button
-                    key={opt.value}
-                    onClick={() => updateParam('sort', opt.value)}
-                    className="px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-all duration-200"
-                    style={sort === opt.value
-                      ? { background: '#7c3aed', color: '#fff' }
-                      : { color: 'var(--text-2)' }
-                    }
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
+              <button onClick={() => setShowFilters(!showFilters)} className={`h-14 px-6 rounded-xl font-bold flex items-center gap-2 transition-all ${showFilters ? 'bg-sky-500 text-white' : 'bg-slate-900 text-slate-400 border border-white/5'}`}>
+                <Filter className="w-5 h-5" /> Filters
+              </button>
+              <select value={sort} onChange={(e) => updateParam('sort', e.target.value)} className="h-14 px-6 rounded-xl bg-slate-900 border border-white/5 text-slate-400 font-bold outline-none">
+                <option value="recent">Newest</option>
+                <option value="played">Most Played</option>
+                <option value="liked">Most Liked</option>
+                <option value="trending">Trending</option>
+              </select>
             </div>
-
-            {/* Advanced panel */}
-            {showAdvanced && (
-              <div
-                className="rounded-2xl p-6 grid grid-cols-1 md:grid-cols-3 gap-6"
-                style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}
-              >
-                <div className="md:col-span-3">
-                  <label className="block text-sm font-medium mb-3" style={{ color: 'var(--text-1)' }}>Filter by Tags</label>
-                  <div className="flex flex-wrap gap-2">
-                    {allTags.map(tag => (
-                      <button
-                        key={tag}
-                        onClick={() => toggleTag(tag)}
-                        className="px-3 py-1 rounded-full text-xs font-medium border transition-all"
-                        style={selTags.includes(tag)
-                          ? { background: '#7c3aed', borderColor: '#7c3aed', color: '#fff' }
-                          : { background: 'transparent', borderColor: 'var(--border)', color: 'var(--text-2)' }
-                        }
-                      >
-                        {tag}
-                      </button>
-                    ))}
-                    {allTags.length === 0 && <span className="text-xs italic" style={{ color: 'var(--text-3)' }}>No tags available</span>}
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-1)' }}>Min. Likes</label>
-                  <input type="number" min="0" placeholder="0" value={minLikes} onChange={e => updateParam('minLikes', e.target.value)} className="input-field" />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-1)' }}>Min. Plays</label>
-                  <input type="number" min="0" placeholder="0" value={minPlays} onChange={e => updateParam('minPlays', e.target.value)} className="input-field" />
-                </div>
-                <div className="flex items-end">
-                  <button
-                    onClick={clearFilters}
-                    className="w-full py-2.5 rounded-xl text-sm font-medium transition-all hover:bg-red-500/10 hover:text-red-400"
-                    style={{ border: '1px solid var(--border)', color: 'var(--text-2)' }}
-                  >
-                    Reset All Filters
-                  </button>
-                </div>
-              </div>
-            )}
           </div>
 
-          {/* Grid */}
-          {error ? (
-            <div className="text-center py-20">
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-red-500/10 rounded-full mb-4">
-                <svg className="w-8 h-8 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-              </div>
-              <p className="text-red-400 text-lg font-medium mb-4">{error}</p>
-              <button onClick={fetchGames} className="btn-secondary">Try Again</button>
-            </div>
-          ) : loading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)}
-            </div>
-          ) : games.length === 0 ? (
-            <div className="text-center py-20">
-              <div
-                className="inline-flex items-center justify-center w-20 h-20 rounded-full mb-6"
-                style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}
-              >
-                <svg className="w-10 h-10" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{ color: 'var(--text-3)' }}>
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              {hasFilters ? (
-                <>
-                  <p className="text-lg mb-4" style={{ color: 'var(--text-2)' }}>No games match your filters</p>
-                  <button onClick={clearFilters} className="btn-secondary">Clear all filters</button>
-                </>
-              ) : (
-                <>
-                  <p className="text-lg mb-2" style={{ color: 'var(--text-2)' }}>No games yet!</p>
-                  <p className="mb-6" style={{ color: 'var(--text-3)' }}>Be the first to upload a game.</p>
-                  <Link to="/upload" className="btn-primary">Upload a Game</Link>
-                </>
-              )}
+          <AnimatePresence>
+            {showFilters && (
+              <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden mb-12">
+                <div className="p-8 rounded-3xl bg-slate-900 border border-white/5 grid grid-cols-1 md:grid-cols-2 gap-10">
+                  <div>
+                    <div className="flex items-center gap-2 mb-4 text-sm font-bold text-slate-300 uppercase tracking-widest"><Cpu className="w-4 h-4 text-sky-400" /> AI Tool</div>
+                    <div className="flex flex-wrap gap-2">
+                      <button onClick={() => updateParam('aiTool', '')} className={`px-4 py-2 rounded-lg text-sm font-bold ${!selAiTool ? 'bg-sky-500 text-white' : 'bg-white/5 text-slate-400'}`}>All</button>
+                      {AI_TOOLS.map(tool => (
+                        <button key={tool} onClick={() => updateParam('aiTool', tool)} className={`px-4 py-2 rounded-lg text-sm font-bold ${selAiTool === tool ? 'bg-sky-500 text-white' : 'bg-white/5 text-slate-400'}`}>{tool}</button>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 mb-4 text-sm font-bold text-slate-300 uppercase tracking-widest"><ListFilter className="w-4 h-4 text-emerald-400" /> Category</div>
+                    <div className="flex flex-wrap gap-2">
+                      <button onClick={() => updateParam('category', '')} className={`px-4 py-2 rounded-lg text-sm font-bold ${!selCategory ? 'bg-emerald-500 text-white' : 'bg-white/5 text-slate-400'}`}>All</button>
+                      {CATEGORIES.map(cat => (
+                        <button key={cat.id} onClick={() => updateParam('category', cat.id)} className={`px-4 py-2 rounded-lg text-sm font-bold ${selCategory === cat.id ? 'bg-emerald-500 text-white' : 'bg-white/5 text-slate-400'}`}>{cat.label}</button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {loading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+              {[...Array(8)].map((_, i) => <div key={i} className="card aspect-[4/5] skeleton" />)}
             </div>
           ) : (
-            <>
-              {hasFilters && (
-                <p className="text-sm mb-5" style={{ color: 'var(--text-3)' }}>
-                  Showing {games.length} result{games.length !== 1 ? 's' : ''}
-                </p>
-              )}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {games.map(g => <GameCard key={g.id} game={g} onTagClick={toggleTag} />)}
-              </div>
-            </>
+            <motion.div layout className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+              {games.map(game => <GameCard key={game.id} game={game} />)}
+            </motion.div>
           )}
         </section>
 
-        {/* ─── Bottom CTA ──────────────────────────────────────────────────── */}
-        {!loading && games.length > 0 && (
-          <section
-            ref={ctaRef}
-            className={`mt-24 mb-8 text-center py-16 rounded-3xl relative overflow-hidden reveal ${ctaVis ? 'visible' : ''}`}
-            style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}
-          >
-            <div className="absolute inset-0 hero-glow opacity-60" />
-            <div className="relative z-10">
-              <h2 className="text-3xl font-bold mb-4" style={{ color: 'var(--text-1)' }}>
-                Ready to share your game?
-              </h2>
-              <p className="text-lg mb-8 max-w-lg mx-auto" style={{ color: 'var(--text-2)' }}>
-                Upload your HTML or ZIP game in seconds. No account required.
-              </p>
-              <Link to="/upload" className="btn-primary text-base px-8 py-3.5">
-                + Upload Your Game
-              </Link>
+        <section className="mt-40 p-12 sm:p-20 rounded-[3rem] relative overflow-hidden bg-slate-900 border border-white/5">
+          <div className="relative z-10 max-w-2xl">
+            <h2 className="text-4xl sm:text-5xl font-black tracking-tight mb-8">Join the future of <br /><span className="text-sky-400">game creation.</span></h2>
+            <p className="text-lg text-slate-400 mb-10">WebGames is the place to showcase your AI-crafted work.</p>
+            <div className="flex flex-wrap gap-4">
+              <Link to="/upload" className="btn-primary px-8 py-4">Get Started for Free</Link>
             </div>
-          </section>
-        )}
+          </div>
+        </section>
       </div>
     </div>
   );

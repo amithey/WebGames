@@ -52,20 +52,25 @@ function handleMulterError(err, req, res, next) {
 /** Map a DB row (snake_case + computed cols) → camelCase API response */
 function formatGame(row) {
   return {
-    id:          row.id,
-    title:       row.title,
-    description: row.description || '',
-    author:      row.author || '',
-    tags:        row.tags ? JSON.parse(row.tags) : [],
-    thumbnail:   row.thumbnail || null,
-    playCount:   row.play_count   || 0,
-    fileType:    row.file_type    || 'html',
-    likes:       row.likes        || 0,
-    featured:    row.featured     || false,
-    createdAt:   row.created_at,
-    fileUrl:     row.file_url     || null,
-    avgRating:   row.avg_rating   ? parseFloat(row.avg_rating)   : 0,
-    ratingCount: row.rating_count ? parseInt(row.rating_count)   : 0,
+    id:           row.id,
+    title:        row.title,
+    description:  row.description || '',
+    author:       row.author || '',
+    tags:         row.tags ? (typeof row.tags === 'string' ? JSON.parse(row.tags) : row.tags) : [],
+    thumbnail:    row.thumbnail || null,
+    thumbnailUrl: row.thumbnail_url || null,
+    playCount:    row.play_count   || 0,
+    weeklyPlays:  row.weekly_plays || 0,
+    fileType:     row.file_type    || 'html',
+    likes:        row.likes        || 0,
+    featured:     row.featured     || false,
+    isTrending:   row.is_trending  || false,
+    aiTool:       row.ai_tool      || null,
+    category:     row.category     || null,
+    createdAt:    row.created_at,
+    fileUrl:      row.file_url     || null,
+    avgRating:    row.avg_rating   ? parseFloat(row.avg_rating)   : 0,
+    ratingCount:  row.rating_count ? parseInt(row.rating_count)   : 0,
   };
 }
 
@@ -114,9 +119,11 @@ router.get('/', async (req, res) => {
   try {
     const sort     = req.query.sort || 'recent';
     const search   = req.query.search?.trim() || '';
-    const tags     = [req.query.tag].flat().filter(Boolean); // ?tag=A&tag=B
+    const tags     = [req.query.tag].flat().filter(Boolean);
     const minLikes = parseInt(req.query.minLikes) || 0;
     const minPlays = parseInt(req.query.minPlays) || 0;
+    const aiTool   = req.query.aiTool;
+    const category = req.query.category;
 
     const sortMap = {
       liked:  'g.likes DESC, g.created_at DESC',
@@ -124,6 +131,7 @@ router.get('/', async (req, res) => {
       recent: 'g.created_at DESC',
       alpha:  'g.title ASC',
       rated:  'avg_rating DESC, rating_count DESC',
+      trending: 'g.weekly_plays DESC, g.created_at DESC',
     };
     const orderBy = sortMap[sort] || sortMap.recent;
 
@@ -147,6 +155,16 @@ router.get('/', async (req, res) => {
       params.push(minPlays);
       p++;
     }
+    if (aiTool) {
+      conditions.push(`g.ai_tool = $${p}`);
+      params.push(aiTool);
+      p++;
+    }
+    if (category) {
+      conditions.push(`g.category = $${p}`);
+      params.push(category);
+      p++;
+    }
 
     const sql = `
       ${GAME_SELECT}
@@ -157,10 +175,10 @@ router.get('/', async (req, res) => {
 
     let { rows } = await db.query(sql, params);
 
-    // Tag filtering is done in JS (tags are stored as JSON text)
+    // Tag filtering
     if (tags.length > 0) {
       rows = rows.filter(row => {
-        const gameTags = row.tags ? JSON.parse(row.tags) : [];
+        const gameTags = row.tags ? (typeof row.tags === 'string' ? JSON.parse(row.tags) : row.tags) : [];
         return tags.every(t => gameTags.includes(t));
       });
     }
@@ -179,15 +197,15 @@ router.post('/', uploadLimiter, upload.fields([{ name: 'gameFile', maxCount: 1 }
   const description = sanitizeText(req.body.description, 500);
   const author      = sanitizeText(req.body.author, 80);
   const tags        = sanitizeText(req.body.tags, 200);
+  const aiTool      = sanitizeText(req.body.aiTool, 50);
+  const category    = sanitizeText(req.body.category, 50);
 
   if (!title) return res.status(400).json({ error: 'Title is required' });
   if (!req.files?.gameFile) return res.status(400).json({ error: 'A game file (.html or .zip) is required' });
 
   const gameFile = req.files.gameFile[0];
   const ext      = path.extname(gameFile.originalname).toLowerCase();
-  if (ext !== '.html' && ext !== '.zip')
-    return res.status(400).json({ error: 'Only .html and .zip files are allowed' });
-
+  
   const id = uuidv4();
   let fileUrl = null, thumbnailUrl = null;
 
@@ -207,9 +225,9 @@ router.post('/', uploadLimiter, upload.fields([{ name: 'gameFile', maxCount: 1 }
       : [];
 
     await db.query(
-      `INSERT INTO games (id, title, description, author, tags, thumbnail, file_type, file_url)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
-      [id, title, description, author, JSON.stringify(tagsArray), thumbnailUrl, ext.slice(1), fileUrl]
+      `INSERT INTO games (id, title, description, author, tags, thumbnail, thumbnail_url, file_type, file_url, ai_tool, category)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+      [id, title, description, author, JSON.stringify(tagsArray), thumbnailUrl, thumbnailUrl, ext.slice(1), fileUrl, aiTool, category]
     );
 
     const { rows: [game] } = await db.query(
@@ -219,9 +237,7 @@ router.post('/', uploadLimiter, upload.fields([{ name: 'gameFile', maxCount: 1 }
   } catch (err) {
     if (id) await deleteFolder(`files/${id}`).catch(() => {});
     console.error('Error uploading game:', err);
-    // Return specific error message if available, otherwise generic
-    const message = err.message || 'Failed to upload game';
-    res.status(500).json({ error: message });
+    res.status(500).json({ error: err.message || 'Failed to upload game' });
   }
 });
 
@@ -371,16 +387,63 @@ router.post('/:id/comments', interactionLimiter, async (req, res) => {
 
     const content     = sanitizeText(req.body.content, 1000);
     const author_name = sanitizeText(req.body.author_name, 80) || 'Anonymous';
+    const parent_id   = req.body.parentId ? parseInt(req.body.parentId) : null;
+    
     if (!content) return res.status(400).json({ error: 'Comment content is required' });
 
     const { rows: [comment] } = await db.query(
-      'INSERT INTO comments (game_id, author_name, content) VALUES ($1,$2,$3) RETURNING *',
-      [req.params.id, author_name, content]
+      'INSERT INTO comments (game_id, author_name, content, parent_id) VALUES ($1,$2,$3,$4) RETURNING *',
+      [req.params.id, author_name, content, parent_id]
     );
     res.status(201).json(comment);
   } catch (err) {
     console.error('Error posting comment:', err);
     res.status(500).json({ error: 'Failed to post comment' });
+  }
+});
+
+// ─── POST /api/games/:id/report ───────────────────────────────────────────────
+
+router.post('/:id/report', interactionLimiter, async (req, res) => {
+  try {
+    const { reason } = req.body;
+    if (!reason) return res.status(400).json({ error: 'Reason is required' });
+    
+    const { rows: [game] } = await db.query('SELECT id FROM games WHERE id = $1', [req.params.id]);
+    if (!game) return res.status(404).json({ error: 'Game not found' });
+
+    await db.query(
+      'INSERT INTO reports (game_id, reason) VALUES ($1, $2)',
+      [req.params.id, reason]
+    );
+    res.json({ success: true, message: 'Report submitted' });
+  } catch (err) {
+    console.error('Error reporting game:', err);
+    res.status(500).json({ error: 'Failed to report game' });
+  }
+});
+
+// ─── POST /api/games/comments/:commentId/react ───────────────────────────────
+
+router.post('/comments/:commentId/react', interactionLimiter, async (req, res) => {
+  try {
+    const { emoji } = req.body;
+    if (!emoji) return res.status(400).json({ error: 'Emoji is required' });
+
+    const { rows: [comment] } = await db.query('SELECT reactions FROM comments WHERE id = $1', [req.params.commentId]);
+    if (!comment) return res.status(404).json({ error: 'Comment not found' });
+
+    const reactions = comment.reactions || {};
+    reactions[emoji] = (reactions[emoji] || 0) + 1;
+
+    const { rows: [updated] } = await db.query(
+      'UPDATE comments SET reactions = $1 WHERE id = $2 RETURNING reactions',
+      [JSON.stringify(reactions), req.params.commentId]
+    );
+    res.json({ reactions: updated.reactions });
+  } catch (err) {
+    console.error('Error reacting to comment:', err);
+    res.status(500).json({ error: 'Failed to react to comment' });
   }
 });
 

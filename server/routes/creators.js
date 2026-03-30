@@ -5,17 +5,20 @@ const db      = require('../db');
 // Reuse the same camelCase mapper from games.js inline (avoids circular require)
 function formatGame(row) {
   return {
-    id:          row.id,
-    title:       row.title,
-    description: row.description || '',
-    author:      row.author || '',
-    tags:        row.tags ? JSON.parse(row.tags) : [],
-    thumbnail:   row.thumbnail || null,
-    playCount:   row.play_count  || 0,
-    fileType:    row.file_type   || 'html',
-    likes:       row.likes       || 0,
-    createdAt:   row.created_at,
-    fileUrl:     row.file_url    || null,
+    id:           row.id,
+    title:        row.title,
+    description:  row.description || '',
+    author:       row.author || '',
+    tags:         row.tags ? (typeof row.tags === 'string' ? JSON.parse(row.tags) : row.tags) : [],
+    thumbnail:    row.thumbnail || null,
+    thumbnailUrl: row.thumbnail_url || null,
+    playCount:    row.play_count   || 0,
+    fileType:     row.file_type    || 'html',
+    likes:        row.likes        || 0,
+    aiTool:       row.ai_tool      || null,
+    category:     row.category     || null,
+    createdAt:    row.created_at,
+    fileUrl:      row.file_url     || null,
   };
 }
 

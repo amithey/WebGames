@@ -5,7 +5,8 @@
   ],
   "permissions": {
     "allow": [
-      "WebFetch(domain:web-games-mauve.vercel.app)"
+      "Read(//c/Users/heyma/OneDrive/Desktop/מדעי המחשב/פרוייקטים/WebGames/client/**)",
+      "Bash(vercel --prod)"
     ]
   }
 }
