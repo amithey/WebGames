@@ -165,6 +165,7 @@ export default function Game() {
   const containerRef = useRef(null);
 
   const [game, setGame] = useState(null);
+  const [gameHtml, setGameHtml] = useState(null);
   const [relatedGames, setRelatedGames] = useState([]);
   const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -182,7 +183,18 @@ export default function Game() {
       setGame(res.data);
       setLikes(res.data.likes);
       setLiked(localStorage.getItem(`liked_${id}`) === '1');
-      
+
+      // Fetch the actual game HTML content for srcDoc rendering
+      if (res.data.fileUrl) {
+        try {
+          const htmlRes = await fetch(res.data.fileUrl);
+          const html = await htmlRes.text();
+          setGameHtml(html);
+        } catch (e) {
+          console.error('Failed to fetch game HTML:', e);
+        }
+      }
+
       // Fetch related games
       if (res.data.category) {
         const related = await axios.get(`/api/games?category=${res.data.category}`);
@@ -346,12 +358,23 @@ export default function Game() {
             ref={containerRef}
             className={`relative rounded-[2rem] overflow-hidden bg-black shadow-2xl border border-white/5 ${fullscreen ? 'fixed inset-0 z-[100] rounded-none' : ''}`}
           >
-            <iframe 
-              src={game.fileUrl} 
-              className="w-full aspect-video border-none"
-              title={game.title}
-              allowFullScreen
-            />
+            {gameHtml ? (
+              <iframe
+                ref={iframeRef}
+                srcDoc={gameHtml}
+                sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-modals allow-pointer-lock"
+                className="w-full aspect-video border-none"
+                title={game.title}
+                allowFullScreen
+              />
+            ) : (
+              <div className="w-full aspect-video flex items-center justify-center">
+                <div className="flex flex-col items-center gap-4">
+                  <div className="w-12 h-12 border-4 border-slate-800 border-t-sky-500 rounded-full animate-spin" />
+                  <p className="text-slate-400 text-sm">Loading game...</p>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Game Info Bar */}
