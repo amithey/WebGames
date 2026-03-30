@@ -111,31 +111,37 @@ function Navbar() {
         {/* Actions */}
         <div className="flex items-center gap-3">
           <div className="hidden sm:flex items-center gap-2 mr-2">
-            <button className="btn-ghost relative">
+            <button 
+              onClick={() => alert('Notifications coming soon!')}
+              className="btn-ghost relative hover:scale-110 hover:bg-white/10 transition-all"
+            >
               <Bell className="w-5 h-5" />
               <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-sky-500 rounded-full border-2 border-slate-900" />
             </button>
-            <button className="btn-ghost">
+            <button 
+              onClick={() => alert('User profiles coming soon!')}
+              className="btn-ghost hover:scale-110 hover:bg-white/10 transition-all"
+            >
               <User className="w-5 h-5" />
             </button>
           </div>
 
           <button
             onClick={toggleTheme}
-            className="btn-ghost"
+            className="btn-ghost hover:scale-110 hover:bg-white/10 transition-all"
             title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
           >
             {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
           </button>
 
-          <Link to="/upload" className="btn-primary py-2 px-5 text-sm hidden sm:flex">
+          <Link to="/upload" className="btn-primary py-2 px-5 text-sm hidden sm:flex hover:scale-105 active:scale-95 transition-all">
             <UploadIcon className="w-4 h-4" />
             <span>Upload</span>
           </Link>
 
           <button
             onClick={() => setMobileOpen(!mobileOpen)}
-            className="md:hidden btn-ghost"
+            className="md:hidden btn-ghost hover:bg-white/10 transition-all"
           >
             {mobileOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </button>
@@ -192,9 +198,9 @@ function Footer() {
               The premier destination for AI-crafted browser games. Built for creators, enjoyed by everyone.
             </p>
             <div className="flex gap-4">
-              <a href="https://github.com/amithey/WebGames" target="_blank" rel="noopener noreferrer" className="btn-ghost p-2.5 bg-white/5 hover:text-sky-400"><Globe className="w-5 h-5" /></a>
-              <a href="#" className="btn-ghost p-2.5 bg-white/5 hover:text-sky-400"><ExternalLink className="w-5 h-5" /></a>
-              <a href="#" className="btn-ghost p-2.5 bg-white/5 hover:text-sky-400"><MessageSquare className="w-5 h-5" /></a>
+              <a href="https://github.com/amithey/WebGames" target="_blank" rel="noopener noreferrer" className="btn-ghost p-2.5 bg-white/5 hover:text-sky-400 hover:scale-110 transition-all"><Globe className="w-5 h-5" /></a>
+              <a href="#" onClick={(e) => { e.preventDefault(); alert('Twitter coming soon!'); }} className="btn-ghost p-2.5 bg-white/5 hover:text-sky-400 hover:scale-110 transition-all"><ExternalLink className="w-5 h-5" /></a>
+              <a href="#" onClick={(e) => { e.preventDefault(); alert('Discord coming soon!'); }} className="btn-ghost p-2.5 bg-white/5 hover:text-sky-400 hover:scale-110 transition-all"><MessageSquare className="w-5 h-5" /></a>
             </div>
           </div>
           
@@ -212,10 +218,10 @@ function Footer() {
           <div>
             <h4 className="font-bold mb-6">Legal</h4>
             <ul className="space-y-4">
-              <li className="text-slate-400 hover:text-sky-400 transition-colors cursor-pointer">Terms of Service</li>
-              <li className="text-slate-400 hover:text-sky-400 transition-colors cursor-pointer">Privacy Policy</li>
-              <li className="text-slate-400 hover:text-sky-400 transition-colors cursor-pointer">Content Policy</li>
-              <li className="text-slate-400 hover:text-sky-400 transition-colors cursor-pointer">Contact Us</li>
+              <li onClick={() => alert('Terms of Service coming soon!')} className="text-slate-400 hover:text-sky-400 transition-colors cursor-pointer hover:translate-x-1 transition-all">Terms of Service</li>
+              <li onClick={() => alert('Privacy Policy coming soon!')} className="text-slate-400 hover:text-sky-400 transition-colors cursor-pointer hover:translate-x-1 transition-all">Privacy Policy</li>
+              <li onClick={() => alert('Content Policy coming soon!')} className="text-slate-400 hover:text-sky-400 transition-colors cursor-pointer hover:translate-x-1 transition-all">Content Policy</li>
+              <li onClick={() => alert('Contact Us coming soon!')} className="text-slate-400 hover:text-sky-400 transition-colors cursor-pointer hover:translate-x-1 transition-all">Contact Us</li>
             </ul>
           </div>
         </div>

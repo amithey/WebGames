@@ -284,10 +284,14 @@ export default function Home() {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               {collections.map(col => (
-                <div key={col.id} className="p-8 rounded-[2rem] bg-slate-900 border border-white/5 group cursor-pointer hover:border-sky-500/30 transition-all">
+                <div 
+                  key={col.id} 
+                  onClick={() => alert(`Collection '${col.name}' coming soon!`)}
+                  className="p-8 rounded-[2rem] bg-slate-900 border border-white/5 group cursor-pointer hover:border-sky-500/30 hover:scale-105 hover:bg-slate-800/50 transition-all"
+                >
                   <h3 className="text-2xl font-black text-white mb-2 group-hover:text-sky-400 transition-colors">{col.name}</h3>
                   <p className="text-slate-400 text-sm font-medium mb-6 line-clamp-2">{col.description}</p>
-                  <div className="flex items-center gap-2 text-sky-500 font-bold text-xs uppercase tracking-widest">
+                  <div className="flex items-center gap-2 text-sky-500 font-bold text-xs uppercase tracking-widest group-hover:gap-3 transition-all">
                     Explore Collection <ChevronRight className="w-4 h-4" />
                   </div>
                 </div>
@@ -314,10 +318,10 @@ export default function Home() {
                   className="input-field pl-12 h-14 bg-slate-900 border-white/5"
                 />
               </div>
-              <button onClick={() => setShowFilters(!showFilters)} className={`h-14 px-6 rounded-xl font-bold flex items-center gap-2 transition-all ${showFilters ? 'bg-sky-500 text-white' : 'bg-slate-900 text-slate-400 border border-white/5'}`}>
+              <button onClick={() => setShowFilters(!showFilters)} className={`h-14 px-6 rounded-xl font-bold flex items-center gap-2 transition-all hover:scale-105 active:scale-95 ${showFilters ? 'bg-sky-500 text-white shadow-lg shadow-sky-500/20' : 'bg-slate-900 text-slate-400 border border-white/5 hover:border-white/10'}`}>
                 <Filter className="w-5 h-5" /> Filters
               </button>
-              <select value={sort} onChange={(e) => updateParam('sort', e.target.value)} className="h-14 px-6 rounded-xl bg-slate-900 border border-white/5 text-slate-400 font-bold outline-none">
+              <select value={sort} onChange={(e) => updateParam('sort', e.target.value)} className="h-14 px-6 rounded-xl bg-slate-900 border border-white/5 text-slate-400 font-bold outline-none hover:border-white/10 hover:scale-105 transition-all cursor-pointer">
                 <option value="recent">Newest</option>
                 <option value="played">Most Played</option>
                 <option value="liked">Most Liked</option>
@@ -335,16 +339,16 @@ export default function Home() {
                     <div className="flex flex-wrap gap-2">
                       <button onClick={() => updateParam('aiTool', '')} className={`px-4 py-2 rounded-lg text-sm font-bold ${!selAiTool ? 'bg-sky-500 text-white' : 'bg-white/5 text-slate-400'}`}>All</button>
                       {AI_TOOLS.map(tool => (
-                        <button key={tool} onClick={() => updateParam('aiTool', tool)} className={`px-4 py-2 rounded-lg text-sm font-bold ${selAiTool === tool ? 'bg-sky-500 text-white' : 'bg-white/5 text-slate-400'}`}>{tool}</button>
+                        <button key={tool} onClick={() => updateParam('aiTool', tool)} className={`px-4 py-2 rounded-lg text-sm font-bold transition-all hover:scale-110 active:scale-90 ${selAiTool === tool ? 'bg-sky-500 text-white shadow-lg shadow-sky-500/20' : 'bg-white/5 text-slate-400 hover:bg-white/10'}`}>{tool}</button>
                       ))}
                     </div>
                   </div>
                   <div>
                     <div className="flex items-center gap-2 mb-4 text-sm font-bold text-slate-300 uppercase tracking-widest"><ListFilter className="w-4 h-4 text-emerald-400" /> Category</div>
                     <div className="flex flex-wrap gap-2">
-                      <button onClick={() => updateParam('category', '')} className={`px-4 py-2 rounded-lg text-sm font-bold ${!selCategory ? 'bg-emerald-500 text-white' : 'bg-white/5 text-slate-400'}`}>All</button>
+                      <button onClick={() => updateParam('category', '')} className={`px-4 py-2 rounded-lg text-sm font-bold transition-all hover:scale-110 active:scale-90 ${!selCategory ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'bg-white/5 text-slate-400 hover:bg-white/10'}`}>All</button>
                       {CATEGORIES.map(cat => (
-                        <button key={cat.id} onClick={() => updateParam('category', cat.id)} className={`px-4 py-2 rounded-lg text-sm font-bold ${selCategory === cat.id ? 'bg-emerald-500 text-white' : 'bg-white/5 text-slate-400'}`}>{cat.label}</button>
+                        <button key={cat.id} onClick={() => updateParam('category', cat.id)} className={`px-4 py-2 rounded-lg text-sm font-bold transition-all hover:scale-110 active:scale-90 ${selCategory === cat.id ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'bg-white/5 text-slate-400 hover:bg-white/10'}`}>{cat.label}</button>
                       ))}
                     </div>
                   </div>
@@ -369,7 +373,7 @@ export default function Home() {
             <h2 className="text-4xl sm:text-5xl font-black tracking-tight mb-8">Join the future of <br /><span className="text-sky-400">game creation.</span></h2>
             <p className="text-lg text-slate-400 mb-10">WebGames is the place to showcase your AI-crafted work.</p>
             <div className="flex flex-wrap gap-4">
-              <Link to="/upload" className="btn-primary px-8 py-4">Get Started for Free</Link>
+              <Link to="/upload" className="btn-primary px-8 py-4 hover:scale-105 active:scale-95 transition-all">Get Started for Free</Link>
             </div>
           </div>
         </section>

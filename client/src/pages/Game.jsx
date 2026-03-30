@@ -240,6 +240,29 @@ export default function Game() {
     return () => document.removeEventListener('fullscreenchange', onFsChange);
   }, []);
 
+  const handleShare = async () => {
+    const shareData = {
+      title: game?.title || 'Check out this game!',
+      text: game?.description || 'Play this awesome game on WebGames.',
+      url: window.location.href,
+    };
+
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+      } catch (err) {
+        console.error('Error sharing:', err);
+      }
+    } else {
+      try {
+        await navigator.clipboard.writeText(window.location.href);
+        alert('Game link copied to clipboard!');
+      } catch (err) {
+        console.error('Failed to copy:', err);
+      }
+    }
+  };
+
   const handleLike = async () => {
     try {
       const res = await axios.post(`/api/games/${id}/${liked ? 'unlike' : 'like'}`);
@@ -405,7 +428,10 @@ export default function Game() {
                 <Heart className={`w-5 h-5 ${liked ? 'fill-current' : ''}`} />
                 {likes} {liked ? 'Liked' : 'Like'}
               </button>
-              <button className="w-14 h-14 rounded-2xl bg-slate-900 border border-white/5 flex items-center justify-center text-slate-400 hover:text-white hover:border-white/10 transition-all">
+              <button 
+                onClick={handleShare}
+                className="w-14 h-14 rounded-2xl bg-slate-900 border border-white/5 flex items-center justify-center text-slate-400 hover:text-white hover:border-white/10 hover:scale-110 transition-all"
+              >
                 <Share2 className="w-6 h-6" />
               </button>
             </div>
