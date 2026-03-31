@@ -64,6 +64,7 @@ function ThemeProvider({ children }) {
 function AuthModal({ isOpen, onClose }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [username, setUsername] = useState('');
   const [loading, setLoading] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
 
@@ -73,9 +74,40 @@ function AuthModal({ isOpen, onClose }) {
 
     try {
       if (isSignUp) {
-        const { error } = await supabase.auth.signUp({ email, password });
+        const cleanUsername = username.trim();
+        if (cleanUsername.length < 3) {
+          throw new Error('Username must be at least 3 characters');
+        }
+        if (!/^[a-zA-Z0-9_-]+$/.test(cleanUsername)) {
+          throw new Error('Username can only contain letters, numbers, underscores, and hyphens');
+        }
+
+        const { data: existingUser, error: checkError } = await supabase
+          .from('profiles')
+          .select('username')
+          .eq('username', cleanUsername)
+          .single();
+
+        if (checkError && checkError.code !== 'PGRST116') {
+          throw checkError;
+        }
+        if (existingUser) {
+          throw new Error('Username already taken.');
+        }
+        
+        const { error } = await supabase.auth.signUp({ 
+          email, 
+          password,
+          options: {
+            data: {
+              username: cleanUsername,
+              avatar_url: `https://api.dicebear.com/6.x/micah/svg?seed=${cleanUsername}`
+            }
+          } 
+        });
         if (error) throw error;
         toast.success('Check your email for the confirmation link!');
+        onClose();
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
@@ -123,6 +155,23 @@ function AuthModal({ isOpen, onClose }) {
         </div>
 
         <form onSubmit={handleAuth} className="space-y-4">
+          {isSignUp && (
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Username</label>
+              <div className="relative">
+                <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                <input 
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="your-cool-name"
+                  className="input-field pl-12 h-12"
+                  required
+                />
+              </div>
+            </div>
+          )}
+
           <div className="space-y-1.5">
             <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Email Address</label>
             <div className="relative">
@@ -183,47 +232,34 @@ function AuthModal({ isOpen, onClose }) {
 function Navbar({ onOpenAuth }) {
   const [scrolled, setScrolled]     = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [user, setUser]             = useState(null);
-  const [isAdmin, setIsAdmin]       = useState(false);
+  const [profile, setProfile]       = useState(null);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
   const { theme, toggleTheme }      = useTheme();
   const location                    = useLocation();
+  const navigate                    = useNavigate();
 
-  useEffect(() => { setMobileOpen(false); setShowNotifications(false); }, [location.pathname]);
+  useEffect(() => { setMobileOpen(false); setShowNotifications(false); setShowUserMenu(false); }, [location.pathname]);
 
   useEffect(() => {
-    const checkUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      const u = session?.user ?? null;
-      setUser(u);
-      
-      if (u) {
-        const { data: profile } = await supabase
+    const fetchProfile = async (user) => {
+      if (user) {
+        const { data: userProfile } = await supabase
           .from('profiles')
-          .select('is_admin')
-          .eq('id', u.id)
+          .select('*')
+          .eq('id', user.id)
           .single();
-        setIsAdmin(profile?.is_admin || false);
+        setProfile(userProfile);
       } else {
-        setIsAdmin(false);
+        setProfile(null);
       }
     };
+    
+    const { data: { session } } = supabase.auth.getSession();
+    fetchProfile(session?.user);
 
-    checkUser();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      const u = session?.user ?? null;
-      setUser(u);
-      if (u) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('is_admin')
-          .eq('id', u.id)
-          .single();
-        setIsAdmin(profile?.is_admin || false);
-      } else {
-        setIsAdmin(false);
-      }
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      fetchProfile(session?.user);
     });
 
     return () => subscription.unsubscribe();
@@ -235,6 +271,12 @@ function Navbar({ onOpenAuth }) {
     onScroll();
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate('/');
+    toast.success('You have been logged out.');
+  };
 
   const navLinks = [
     { to: '/', label: 'Browse', icon: Gamepad2, onClick: () => {
@@ -250,7 +292,6 @@ function Navbar({ onOpenAuth }) {
     <nav className={`navbar ${scrolled ? 'scrolled' : ''}`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full flex items-center justify-between">
         
-        {/* Logo */}
         <Link to="/" className="flex items-center gap-3 group">
           <motion.div 
             whileHover={{ scale: 1.05, rotate: 5 }}
@@ -260,11 +301,9 @@ function Navbar({ onOpenAuth }) {
           </motion.div>
           <div className="flex items-center gap-2">
             <span className="text-xl font-black tracking-tighter animated-gradient-text leading-none">WebGames</span>
-            <span className="text-[10px] font-bold text-slate-500/50 mt-1 uppercase tracking-widest">v2.1</span>
           </div>
         </Link>
 
-        {/* Desktop Nav */}
         <div className="hidden md:flex items-center gap-2">
           {navLinks.map(({ to, label, icon: Icon, onClick }) => (
             <NavLink 
@@ -281,7 +320,7 @@ function Navbar({ onOpenAuth }) {
               {label}
             </NavLink>
           ))}
-          {isAdmin && (
+          {profile?.is_admin && (
             <NavLink 
               to="/admin"
               className={({ isActive }) => `
@@ -295,7 +334,6 @@ function Navbar({ onOpenAuth }) {
           )}
         </div>
 
-        {/* Actions */}
         <div className="flex items-center gap-3">
           <div className="hidden sm:flex items-center gap-2 mr-2 relative">
             <button
@@ -328,19 +366,37 @@ function Navbar({ onOpenAuth }) {
               )}
             </AnimatePresence>
 
-            {user ? (
-              <Link 
-                to="/profile"
-                className="btn-ghost hover:scale-110 hover:bg-white/10 transition-all text-sky-400"
-              >
-                <User className="w-5 h-5" />
-              </Link>
+            {profile ? (
+              <div className="relative">
+                <button onClick={() => setShowUserMenu(!showUserMenu)} className="flex items-center gap-2 pl-2 pr-1 py-1 rounded-full bg-white/5 hover:bg-white/10 transition-colors">
+                  <img src={profile.avatar_url} alt={profile.username} className="w-6 h-6 rounded-full bg-slate-700" />
+                  <span className="font-bold text-sm text-white">{profile.username}</span>
+                </button>
+                <AnimatePresence>
+                {showUserMenu && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    className="absolute top-full right-0 mt-2 w-48 p-2 rounded-2xl bg-slate-800 border border-white/10 shadow-2xl z-[100]"
+                  >
+                    <Link to="/profile" className="flex items-center gap-3 w-full px-3 py-2 text-sm font-bold rounded-lg hover:bg-white/5 transition-colors">
+                      <User className="w-4 h-4" /> My Profile
+                    </Link>
+                    <button onClick={handleLogout} className="flex items-center gap-3 w-full px-3 py-2 text-sm font-bold text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors">
+                      <LogOut className="w-4 h-4" /> Log Out
+                    </button>
+                  </motion.div>
+                )}
+                </AnimatePresence>
+              </div>
             ) : (
               <button 
                 onClick={onOpenAuth}
-                className="btn-ghost hover:scale-110 hover:bg-white/10 transition-all"
+                className="btn-ghost flex items-center gap-2 hover:scale-110 hover:bg-white/10 transition-all"
               >
                 <User className="w-5 h-5" />
+                <span className="font-bold text-sm">Sign In</span>
               </button>
             )}
           </div>
@@ -367,7 +423,6 @@ function Navbar({ onOpenAuth }) {
         </div>
       </div>
 
-      {/* Mobile Menu */}
       <AnimatePresence>
         {mobileOpen && (
           <motion.div
@@ -387,7 +442,7 @@ function Navbar({ onOpenAuth }) {
                   <span className="font-bold">{label}</span>
                 </NavLink>
               ))}
-              {isAdmin && (
+              {profile?.is_admin && (
                 <NavLink 
                   to="/admin"
                   className="flex items-center gap-3 p-3 rounded-xl text-emerald-400 hover:bg-emerald-500/5"
@@ -401,7 +456,7 @@ function Navbar({ onOpenAuth }) {
                 <UploadIcon className="w-5 h-5" />
                 <span>Upload a Game</span>
               </Link>
-              {!user && (
+              {!profile && (
                 <button 
                   onClick={onOpenAuth}
                   className="flex items-center gap-3 p-3 rounded-xl text-sky-400 hover:bg-sky-500/5"
@@ -436,8 +491,8 @@ function Footer() {
             </p>
             <div className="flex gap-4">
               <a href="https://github.com/amithey/WebGames" target="_blank" rel="noopener noreferrer" className="btn-ghost p-2.5 bg-white/5 hover:text-sky-400 hover:scale-110 transition-all" title="GitHub"><Globe className="w-5 h-5" /></a>
-              <button onClick={() => toast('Twitter/X coming soon!', { icon: '🐦' })} className="btn-ghost p-2.5 bg-white/5 hover:text-sky-400 hover:scale-110 transition-all" title="Twitter/X - Coming Soon"><ExternalLink className="w-5 h-5" /></button>
-              <button onClick={() => toast('Discord coming soon!', { icon: '💬' })} className="btn-ghost p-2.5 bg-white/5 hover:text-sky-400 hover:scale-110 transition-all" title="Discord - Coming Soon"><MessageSquare className="w-5 h-5" /></button>
+              <a href="https://x.com" target="_blank" rel="noopener noreferrer" className="btn-ghost p-2.5 bg-white/5 hover:text-sky-400 hover:scale-110 transition-all" title="Twitter/X"><ExternalLink className="w-5 h-5" /></a>
+              <a href="https://discord.com" target="_blank" rel="noopener noreferrer" className="btn-ghost p-2.5 bg-white/5 hover:text-sky-400 hover:scale-110 transition-all" title="Discord"><MessageSquare className="w-5 h-5" /></a>
             </div>
           </div>
           

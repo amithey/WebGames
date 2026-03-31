@@ -5,8 +5,10 @@
 -- ── Profiles ─────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS profiles (
   id          UUID        PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  username    TEXT,
+  username    TEXT        UNIQUE NOT NULL,
   is_admin    BOOLEAN     DEFAULT false,
+  avatar_url  TEXT,
+  bio         TEXT        DEFAULT '',
   created_at  TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -85,3 +87,22 @@ DO $$ BEGIN
     ALTER TABLE games ADD COLUMN user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL;
   END IF;
 END $$;
+
+
+-- -- Triggers ---------------------------------------------------
+
+-- Function to create a profile for a new user
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.profiles (id, username, avatar_url)
+  VALUES (new.id, new.raw_user_meta_data->>'username', new.raw_user_meta_data->>'avatar_url');
+  RETURN new;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Trigger the function every time a user is created
+CREATE OR REPLACE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
+

@@ -268,6 +268,13 @@ export default function Game() {
     window.open(`https://twitter.com/intent/tweet?text=${text}&url=${url}`, '_blank');
     setShowShareMenu(false);
   };
+  
+  const shareToFacebook = () => {
+    const url = encodeURIComponent(window.location.href);
+    window.open(`https://www.facebook.com/sharer/sharer.php?u=${url}`, '_blank');
+    setShowShareMenu(false);
+    toast.success('Opening Facebook to share!');
+  };
 
   const shareToWhatsApp = () => {
     const text = encodeURIComponent(`Check out "${game?.title}" on WebGames! ${window.location.href}`);
@@ -478,6 +485,9 @@ export default function Game() {
                     >
                       <button onClick={handleCopyLink} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-slate-300 hover:bg-white/5 hover:text-white transition-all">
                         <span className="text-lg">🔗</span> Copy Link
+                      </button>
+                      <button onClick={shareToFacebook} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-slate-300 hover:bg-white/5 hover:text-white transition-all">
+                        <span className="text-lg">📘</span> Share to Facebook
                       </button>
                       <button onClick={shareToTwitter} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-slate-300 hover:bg-white/5 hover:text-white transition-all">
                         <span className="text-lg">𝕏</span> Share to X
