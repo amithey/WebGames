@@ -259,8 +259,9 @@ function Navbar({ onOpenAuth }) {
       }
     };
     
-    const { data: { session } } = supabase.auth.getSession();
-    fetchProfile(session?.user);
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      fetchProfile(session?.user);
+    });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       fetchProfile(session?.user);
