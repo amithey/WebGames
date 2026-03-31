@@ -299,17 +299,17 @@ function Navbar({ onOpenAuth }) {
         {/* Actions */}
         <div className="flex items-center gap-3">
           <div className="hidden sm:flex items-center gap-2 mr-2 relative">
-            <button 
+            <button
               onClick={() => setShowNotifications(!showNotifications)}
               className="btn-ghost relative hover:scale-110 hover:bg-white/10 transition-all"
+              title="Notifications"
             >
               <Bell className="w-5 h-5" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-sky-500 rounded-full border-2 border-slate-900" />
             </button>
 
             <AnimatePresence>
               {showNotifications && (
-                <motion.div 
+                <motion.div
                   initial={{ opacity: 0, y: 10, scale: 0.95 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 10, scale: 0.95 }}
@@ -320,6 +320,9 @@ function Navbar({ onOpenAuth }) {
                     <div className="p-4 rounded-2xl bg-white/5 border border-white/5">
                       <p className="text-sm font-bold text-white mb-1">Welcome to WebGames! 👋</p>
                       <p className="text-xs text-slate-400">Discover and share amazing AI-crafted games.</p>
+                    </div>
+                    <div className="p-4 rounded-2xl bg-white/5 border border-white/5 text-center">
+                      <p className="text-xs text-slate-500 font-medium">Real-time notifications coming soon!</p>
                     </div>
                   </div>
                 </motion.div>
@@ -433,9 +436,9 @@ function Footer() {
               The premier destination for AI-crafted browser games. Built for creators, enjoyed by everyone.
             </p>
             <div className="flex gap-4">
-              <a href="https://github.com/amithey/WebGames" target="_blank" rel="noopener noreferrer" className="btn-ghost p-2.5 bg-white/5 hover:text-sky-400 hover:scale-110 transition-all"><Globe className="w-5 h-5" /></a>
-              <a href="#" onClick={(e) => { e.preventDefault(); alert('Twitter coming soon!'); }} className="btn-ghost p-2.5 bg-white/5 hover:text-sky-400 hover:scale-110 transition-all"><ExternalLink className="w-5 h-5" /></a>
-              <a href="#" onClick={(e) => { e.preventDefault(); alert('Discord coming soon!'); }} className="btn-ghost p-2.5 bg-white/5 hover:text-sky-400 hover:scale-110 transition-all"><MessageSquare className="w-5 h-5" /></a>
+              <a href="https://github.com/amithey/WebGames" target="_blank" rel="noopener noreferrer" className="btn-ghost p-2.5 bg-white/5 hover:text-sky-400 hover:scale-110 transition-all" title="GitHub"><Globe className="w-5 h-5" /></a>
+              <button onClick={() => toast('Twitter/X coming soon!', { icon: '🐦' })} className="btn-ghost p-2.5 bg-white/5 hover:text-sky-400 hover:scale-110 transition-all" title="Twitter/X - Coming Soon"><ExternalLink className="w-5 h-5" /></button>
+              <button onClick={() => toast('Discord coming soon!', { icon: '💬' })} className="btn-ghost p-2.5 bg-white/5 hover:text-sky-400 hover:scale-110 transition-all" title="Discord - Coming Soon"><MessageSquare className="w-5 h-5" /></button>
             </div>
           </div>
           
@@ -453,10 +456,10 @@ function Footer() {
           <div>
             <h4 className="font-bold mb-6">Legal</h4>
             <ul className="space-y-4">
-              <li onClick={() => alert('Terms of Service coming soon!')} className="text-slate-400 hover:text-sky-400 transition-colors cursor-pointer hover:translate-x-1 transition-all">Terms of Service</li>
-              <li onClick={() => alert('Privacy Policy coming soon!')} className="text-slate-400 hover:text-sky-400 transition-colors cursor-pointer hover:translate-x-1 transition-all">Privacy Policy</li>
-              <li onClick={() => alert('Content Policy coming soon!')} className="text-slate-400 hover:text-sky-400 transition-colors cursor-pointer hover:translate-x-1 transition-all">Content Policy</li>
-              <li onClick={() => alert('Contact Us coming soon!')} className="text-slate-400 hover:text-sky-400 transition-colors cursor-pointer hover:translate-x-1 transition-all">Contact Us</li>
+              <li onClick={() => toast('Terms of Service coming soon!', { icon: '📜' })} className="text-slate-400 hover:text-sky-400 transition-colors cursor-pointer hover:translate-x-1">Terms of Service</li>
+              <li onClick={() => toast('Privacy Policy coming soon!', { icon: '🔒' })} className="text-slate-400 hover:text-sky-400 transition-colors cursor-pointer hover:translate-x-1">Privacy Policy</li>
+              <li onClick={() => toast('Content Policy coming soon!', { icon: '📋' })} className="text-slate-400 hover:text-sky-400 transition-colors cursor-pointer hover:translate-x-1">Content Policy</li>
+              <li onClick={() => toast('Contact Us coming soon!', { icon: '✉️' })} className="text-slate-400 hover:text-sky-400 transition-colors cursor-pointer hover:translate-x-1">Contact Us</li>
             </ul>
           </div>
         </div>

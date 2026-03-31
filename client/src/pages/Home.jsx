@@ -167,6 +167,13 @@ export default function Home() {
     setLoading(true);
     try {
       const params = new URLSearchParams(searchParams);
+      // Map frontend 'q' param to backend 'search' param
+      if (params.has('q')) {
+        params.set('search', params.get('q'));
+        params.delete('q');
+      }
+      // Remove collection param (frontend-only filter)
+      params.delete('collection');
       const [gamesRes, collRes] = await Promise.all([
         axios.get(`/api/games?${params.toString()}`),
         axios.get('/api/collections')
@@ -285,9 +292,12 @@ export default function Home() {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               {collections.map(col => (
-                <div 
-                  key={col.id} 
-                  onClick={() => toast(`Collection '${col.name}' coming soon!`, { icon: '✨' })}
+                <div
+                  key={col.id}
+                  onClick={() => {
+                    updateParam('collection', col.id.toString());
+                    document.getElementById('browse-section')?.scrollIntoView({ behavior: 'smooth' });
+                  }}
                   className="p-8 rounded-[2rem] bg-slate-900 border border-white/5 group cursor-pointer hover:border-sky-500/30 hover:scale-105 hover:bg-slate-800/50 transition-all"
                 >
                   <h3 className="text-2xl font-black text-white mb-2 group-hover:text-sky-400 transition-colors">{col.name}</h3>
@@ -326,6 +336,8 @@ export default function Home() {
                 <option value="recent">Newest</option>
                 <option value="played">Most Played</option>
                 <option value="liked">Most Liked</option>
+                <option value="rated">Best Rated</option>
+                <option value="alpha">A-Z</option>
                 <option value="trending">Trending</option>
               </select>
             </div>

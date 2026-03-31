@@ -178,6 +178,7 @@ export default function Game() {
   const [commentForm, setCommentForm] = useState({ author_name: '', content: '' });
   const [showReportModal, setShowReportModal] = useState(false);
   const [reportReason, setReportReason] = useState('');
+  const [showShareMenu, setShowShareMenu] = useState(false);
 
   const fetchGame = useCallback(async () => {
     try {
@@ -217,9 +218,18 @@ export default function Game() {
 
   useEffect(() => { fetchGame(); }, [fetchGame]);
 
+  // Close share menu on outside click
+  useEffect(() => {
+    if (!showShareMenu) return;
+    const handleClick = () => setShowShareMenu(false);
+    document.addEventListener('click', handleClick);
+    return () => document.removeEventListener('click', handleClick);
+  }, [showShareMenu]);
+
   // Keyboard Shortcuts
   useEffect(() => {
     const handleKeys = (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
       if (e.key.toLowerCase() === 'f') handleFullscreen();
       if (e.key === 'Escape' && fullscreen) handleFullscreen();
     };
@@ -242,29 +252,34 @@ export default function Game() {
     return () => document.removeEventListener('fullscreenchange', onFsChange);
   }, []);
 
-  const handleShare = async () => {
-    const shareData = {
-      title: game?.title || 'Check out this game!',
-      text: game?.description || 'Play this awesome game on WebGames.',
-      url: window.location.href,
-    };
-
-    if (navigator.share) {
-      try {
-        await navigator.share(shareData);
-      } catch (err) {
-        if (err.name !== 'AbortError') {
-          toast.error('Could not share');
-        }
-      }
-    } else {
-      try {
-        await navigator.clipboard.writeText(window.location.href);
-        toast.success('Link copied to clipboard!');
-      } catch (err) {
-        toast.error('Failed to copy link');
-      }
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      toast.success('Link copied to clipboard!');
+    } catch (err) {
+      toast.error('Failed to copy link');
     }
+    setShowShareMenu(false);
+  };
+
+  const shareToTwitter = () => {
+    const text = encodeURIComponent(`Check out "${game?.title}" on WebGames!`);
+    const url = encodeURIComponent(window.location.href);
+    window.open(`https://twitter.com/intent/tweet?text=${text}&url=${url}`, '_blank');
+    setShowShareMenu(false);
+  };
+
+  const shareToWhatsApp = () => {
+    const text = encodeURIComponent(`Check out "${game?.title}" on WebGames! ${window.location.href}`);
+    window.open(`https://wa.me/?text=${text}`, '_blank');
+    setShowShareMenu(false);
+  };
+
+  const shareToTelegram = () => {
+    const url = encodeURIComponent(window.location.href);
+    const text = encodeURIComponent(`Check out "${game?.title}" on WebGames!`);
+    window.open(`https://t.me/share/url?url=${url}&text=${text}`, '_blank');
+    setShowShareMenu(false);
   };
 
   const handleLike = async () => {
@@ -409,6 +424,13 @@ export default function Game() {
                 </div>
               </div>
             )}
+            <button
+              onClick={handleFullscreen}
+              className="absolute bottom-4 right-4 w-10 h-10 rounded-xl bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center text-white hover:bg-black/80 hover:scale-110 transition-all z-10"
+              title={fullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
+            >
+              {fullscreen ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
+            </button>
           </div>
 
           {/* Game Info Bar */}
@@ -439,12 +461,37 @@ export default function Game() {
                 <Heart className={`w-5 h-5 ${liked ? 'fill-current' : ''}`} />
                 {likes} {liked ? 'Liked' : 'Like'}
               </button>
-              <button 
-                onClick={handleShare}
-                className="w-14 h-14 rounded-2xl bg-slate-900 border border-white/5 flex items-center justify-center text-slate-400 hover:text-white hover:border-white/10 hover:scale-110 transition-all"
-              >
-                <Share2 className="w-6 h-6" />
-              </button>
+              <div className="relative">
+                <button
+                  onClick={(e) => { e.stopPropagation(); setShowShareMenu(!showShareMenu); }}
+                  className="w-14 h-14 rounded-2xl bg-slate-900 border border-white/5 flex items-center justify-center text-slate-400 hover:text-white hover:border-white/10 hover:scale-110 transition-all"
+                >
+                  <Share2 className="w-6 h-6" />
+                </button>
+                <AnimatePresence>
+                  {showShareMenu && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                      className="absolute right-0 top-full mt-3 w-56 p-2 rounded-2xl bg-slate-900 border border-white/10 shadow-2xl z-50"
+                    >
+                      <button onClick={handleCopyLink} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-slate-300 hover:bg-white/5 hover:text-white transition-all">
+                        <span className="text-lg">🔗</span> Copy Link
+                      </button>
+                      <button onClick={shareToTwitter} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-slate-300 hover:bg-white/5 hover:text-white transition-all">
+                        <span className="text-lg">𝕏</span> Share to X
+                      </button>
+                      <button onClick={shareToWhatsApp} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-slate-300 hover:bg-white/5 hover:text-white transition-all">
+                        <span className="text-lg">💬</span> Share to WhatsApp
+                      </button>
+                      <button onClick={shareToTelegram} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-slate-300 hover:bg-white/5 hover:text-white transition-all">
+                        <span className="text-lg">✈️</span> Share to Telegram
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
             </div>
           </div>
 

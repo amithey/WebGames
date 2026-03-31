@@ -138,8 +138,8 @@ export default function Creator() {
             >
               <Share2 className="w-6 h-6" />
             </button>
-            <button 
-              onClick={() => toast('Follow feature coming soon!', { icon: '✨' })}
+            <button
+              onClick={() => toast('Follow feature coming soon! Stay tuned.', { icon: '🔔' })}
               className="h-14 px-8 rounded-2xl bg-sky-500 text-white font-black shadow-lg shadow-sky-500/20 hover:scale-105 active:scale-95 transition-all"
             >
               Follow Creator

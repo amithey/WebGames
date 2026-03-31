@@ -194,7 +194,7 @@ export default function Admin() {
                 <div className="p-8 rounded-[2.5rem] bg-slate-900 border border-white/5">
                   <div className="flex items-center justify-between mb-8">
                     <h3 className="text-xl font-black">Recent Activity</h3>
-                    <button className="text-xs font-bold text-sky-400">View Audit Logs</button>
+                    <button onClick={() => setActiveTab('games')} className="text-xs font-bold text-sky-400 hover:text-sky-300 transition-colors">View All Games</button>
                   </div>
                   <div className="space-y-4">
                     {games.slice(0, 5).map(game => (
@@ -324,6 +324,75 @@ export default function Admin() {
                       <p className="text-slate-500 font-bold">No outstanding reports to process. Great job!</p>
                     </div>
                   )}
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'analytics' && (
+              <div className="space-y-12">
+                <header>
+                  <h2 className="text-4xl font-black tracking-tight mb-2">Analytics</h2>
+                  <p className="text-slate-400 font-medium">Platform performance overview.</p>
+                </header>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  <div className="p-8 rounded-[2rem] bg-slate-900 border border-white/5">
+                    <h3 className="text-lg font-black mb-6 flex items-center gap-2">
+                      <TrendingUp className="w-5 h-5 text-emerald-400" /> Top Games by Plays
+                    </h3>
+                    <div className="space-y-4">
+                      {[...games].sort((a, b) => (b.playCount || 0) - (a.playCount || 0)).slice(0, 5).map((game, i) => (
+                        <div key={game.id} className="flex items-center justify-between p-3 rounded-xl bg-slate-950 border border-white/5">
+                          <div className="flex items-center gap-3">
+                            <span className="text-sm font-black text-slate-500 w-6">#{i + 1}</span>
+                            <span className="text-sm font-bold text-slate-200 truncate">{game.title}</span>
+                          </div>
+                          <span className="text-sm font-black text-emerald-400">{(game.playCount || 0).toLocaleString()}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="p-8 rounded-[2rem] bg-slate-900 border border-white/5">
+                    <h3 className="text-lg font-black mb-6 flex items-center gap-2">
+                      <Heart className="w-5 h-5 text-rose-500" /> Top Games by Likes
+                    </h3>
+                    <div className="space-y-4">
+                      {[...games].sort((a, b) => (b.likes || 0) - (a.likes || 0)).slice(0, 5).map((game, i) => (
+                        <div key={game.id} className="flex items-center justify-between p-3 rounded-xl bg-slate-950 border border-white/5">
+                          <div className="flex items-center gap-3">
+                            <span className="text-sm font-black text-slate-500 w-6">#{i + 1}</span>
+                            <span className="text-sm font-bold text-slate-200 truncate">{game.title}</span>
+                          </div>
+                          <span className="text-sm font-black text-rose-500">{(game.likes || 0).toLocaleString()}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-8 rounded-[2rem] bg-slate-900 border border-white/5">
+                  <h3 className="text-lg font-black mb-6 flex items-center gap-2">
+                    <BarChart3 className="w-5 h-5 text-indigo-400" /> Platform Summary
+                  </h3>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
+                    <div className="text-center">
+                      <p className="text-3xl font-black text-white">{stats?.totalGames || 0}</p>
+                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">Total Games</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-3xl font-black text-white">{stats?.totalPlays?.toLocaleString() || 0}</p>
+                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">Total Plays</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-3xl font-black text-white">{stats?.totalLikes?.toLocaleString() || 0}</p>
+                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">Total Likes</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-3xl font-black text-white">{stats?.totalComments || 0}</p>
+                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">Total Comments</p>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
