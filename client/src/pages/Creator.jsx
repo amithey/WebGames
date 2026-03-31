@@ -3,17 +3,21 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
-import { 
-  User, 
-  Gamepad2, 
-  Heart, 
-  Eye, 
-  ChevronLeft, 
+import { supabase } from '../supabase';
+import {
+  User,
+  Gamepad2,
+  Heart,
+  Eye,
+  ChevronLeft,
   Sparkles,
   Trophy,
   Calendar,
   Share2,
-  Play
+  Play,
+  UserPlus,
+  UserCheck,
+  Users
 } from 'lucide-react';
 
 function StatCard({ value, label, icon: Icon, color }) {
@@ -61,11 +65,14 @@ export default function Creator() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [followLoading, setFollowLoading] = useState(false);
 
   useEffect(() => {
     async function fetchCreator() {
       try {
-        const res = await axios.get(`/api/creators/${encodeURIComponent(name)}`);
+        const { data: { session } } = await supabase.auth.getSession();
+        const headers = session ? { Authorization: `Bearer ${session.access_token}` } : {};
+        const res = await axios.get(`/api/creators/${encodeURIComponent(name)}`, { headers });
         setData(res.data);
         setLoading(false);
       } catch (err) {
@@ -75,6 +82,23 @@ export default function Creator() {
     }
     fetchCreator();
   }, [name]);
+
+  const handleFollow = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) { toast.error('Sign in to follow creators'); return; }
+    setFollowLoading(true);
+    try {
+      const headers = { Authorization: `Bearer ${session.access_token}` };
+      const action = data.isFollowing ? 'unfollow' : 'follow';
+      const res = await axios.post(`/api/creators/${encodeURIComponent(name)}/${action}`, {}, { headers });
+      setData(prev => ({ ...prev, isFollowing: res.data.isFollowing, followerCount: res.data.followerCount }));
+      toast.success(res.data.isFollowing ? `Following ${name}!` : `Unfollowed ${name}`);
+    } catch {
+      toast.error('Failed to update follow status');
+    } finally {
+      setFollowLoading(false);
+    }
+  };
 
   const handleShare = async () => {
     try {
@@ -132,27 +156,30 @@ export default function Creator() {
           </div>
 
           <div className="flex items-center gap-3">
-            <button 
+            <button
               onClick={handleShare}
               className="h-14 w-14 rounded-2xl bg-slate-950 border border-white/5 flex items-center justify-center text-slate-400 hover:text-white transition-all hover:scale-110"
             >
               <Share2 className="w-6 h-6" />
             </button>
             <button
-              onClick={() => toast('Follow feature coming soon! Stay tuned.', { icon: '🔔' })}
-              className="h-14 px-8 rounded-2xl bg-sky-500 text-white font-black shadow-lg shadow-sky-500/20 hover:scale-105 active:scale-95 transition-all"
+              onClick={handleFollow}
+              disabled={followLoading}
+              className={`h-14 px-8 rounded-2xl font-black flex items-center gap-2 shadow-lg transition-all hover:scale-105 active:scale-95 disabled:opacity-60 ${data?.isFollowing ? 'bg-slate-800 text-white border border-white/10' : 'bg-sky-500 text-white shadow-sky-500/20'}`}
             >
-              Follow Creator
+              {data?.isFollowing ? <UserCheck className="w-5 h-5" /> : <UserPlus className="w-5 h-5" />}
+              {data?.isFollowing ? 'Following' : 'Follow'}
             </button>
           </div>
         </div>
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 mb-20">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 mb-20">
         <StatCard value={data.totalGames} label="Total Games" icon={Gamepad2} color="text-sky-400" />
         <StatCard value={data.totalLikes} label="Total Likes" icon={Heart} color="text-rose-500" />
         <StatCard value={data.totalPlays} label="Total Plays" icon={Eye} color="text-emerald-400" />
+        <StatCard value={data.followerCount || 0} label="Followers" icon={Users} color="text-indigo-400" />
       </div>
 
       {/* Games Section */}

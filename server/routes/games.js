@@ -193,7 +193,7 @@ router.get('/', async (req, res) => {
 
 // ─── POST /api/games — upload a new game ─────────────────────────────────────
 
-router.post('/', uploadLimiter, upload.fields([{ name: 'gameFile', maxCount: 1 }, { name: 'thumbnail', maxCount: 1 }]), handleMulterError, async (req, res) => {
+router.post('/', uploadLimiter, optionalAuth, upload.fields([{ name: 'gameFile', maxCount: 1 }, { name: 'thumbnail', maxCount: 1 }]), handleMulterError, async (req, res) => {
   const title       = sanitizeText(req.body.title, 100);
   const description = sanitizeText(req.body.description, 500);
   const author      = sanitizeText(req.body.author, 80);
@@ -225,10 +225,11 @@ router.post('/', uploadLimiter, upload.fields([{ name: 'gameFile', maxCount: 1 }
       ? tags.split(',').map(t => t.trim()).filter(Boolean).slice(0, 10)
       : [];
 
+    const userId = req.user?.userId || null;
     await db.query(
-      `INSERT INTO games (id, title, description, author, tags, thumbnail, thumbnail_url, file_type, file_url, ai_tool, category)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
-      [id, title, description, author, JSON.stringify(tagsArray), thumbnailUrl, thumbnailUrl, ext.slice(1), fileUrl, aiTool, category]
+      `INSERT INTO games (id, title, description, author, tags, thumbnail, thumbnail_url, file_type, file_url, ai_tool, category, user_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
+      [id, title, description, author, JSON.stringify(tagsArray), thumbnailUrl, thumbnailUrl, ext.slice(1), fileUrl, aiTool, category, userId]
     );
 
     const { rows: [game] } = await db.query(
@@ -452,6 +453,18 @@ router.post('/:id/comments', interactionLimiter, async (req, res) => {
       'INSERT INTO comments (game_id, author_name, content, parent_id) VALUES ($1,$2,$3,$4) RETURNING *',
       [req.params.id, author_name, content, parent_id]
     );
+
+    // Notify game owner
+    try {
+      const { rows: [g] } = await db.query('SELECT user_id, title FROM games WHERE id = $1', [req.params.id]);
+      if (g?.user_id) {
+        await db.query(
+          'INSERT INTO notifications (user_id, type, message, game_id) VALUES ($1, $2, $3, $4)',
+          [g.user_id, 'comment', `${author_name} commented on your game "${g.title}"`, req.params.id]
+        );
+      }
+    } catch { /* non-critical */ }
+
     res.status(201).json(comment);
   } catch (err) {
     console.error('Error posting comment:', err);

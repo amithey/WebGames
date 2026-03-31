@@ -192,7 +192,14 @@ export default function Game() {
         try {
           const htmlRes = await fetch(res.data.fileUrl);
           const html = await htmlRes.text();
-          setGameHtml(html);
+          // Inject a <base> tag so relative asset paths (CSS, JS, images) in ZIP
+          // games resolve correctly against the Supabase storage folder.
+          const baseUrl = res.data.fileUrl.substring(0, res.data.fileUrl.lastIndexOf('/') + 1);
+          const baseTag = `<base href="${baseUrl}">`;
+          const processed = /<head[\s>]/i.test(html)
+            ? html.replace(/<head([^>]*)>/i, (m) => m + baseTag)
+            : baseTag + html;
+          setGameHtml(processed);
         } catch (e) {
           console.error('Failed to fetch game HTML:', e);
         }

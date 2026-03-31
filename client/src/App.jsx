@@ -239,6 +239,8 @@ function Navbar({ onOpenAuth }) {
   const [profile, setProfile]       = useState(null);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [session, setSession]       = useState(null);
   const { theme, toggleTheme }      = useTheme();
   const location                    = useLocation();
   const navigate                    = useNavigate();
@@ -246,7 +248,7 @@ function Navbar({ onOpenAuth }) {
   useEffect(() => { setMobileOpen(false); setShowNotifications(false); setShowUserMenu(false); }, [location.pathname]);
 
   useEffect(() => {
-    const fetchProfile = async (user) => {
+    const fetchProfile = async (user, sess) => {
       if (user) {
         const { data: userProfile } = await supabase
           .from('profiles')
@@ -254,17 +256,30 @@ function Navbar({ onOpenAuth }) {
           .eq('id', user.id)
           .single();
         setProfile(userProfile);
+        // Fetch notifications
+        if (sess?.access_token) {
+          try {
+            const { default: axios } = await import('axios');
+            const res = await axios.get('/api/notifications', {
+              headers: { Authorization: `Bearer ${sess.access_token}` }
+            });
+            setNotifications(res.data);
+          } catch { /* non-critical */ }
+        }
       } else {
         setProfile(null);
+        setNotifications([]);
       }
     };
-    
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      fetchProfile(session?.user);
+
+    supabase.auth.getSession().then(({ data: { session: sess } }) => {
+      setSession(sess);
+      fetchProfile(sess?.user, sess);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      fetchProfile(session?.user);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, sess) => {
+      setSession(sess);
+      fetchProfile(sess?.user, sess);
     });
 
     return () => subscription.unsubscribe();
@@ -342,11 +357,25 @@ function Navbar({ onOpenAuth }) {
         <div className="flex items-center gap-3">
           <div className="hidden sm:flex items-center gap-2 mr-2 relative">
             <button
-              onClick={() => setShowNotifications(!showNotifications)}
+              onClick={async () => {
+                setShowNotifications(!showNotifications);
+                // Mark as read when opening
+                if (!showNotifications && notifications.some(n => !n.read) && session?.access_token) {
+                  const { default: axios } = await import('axios');
+                  axios.patch('/api/notifications/read-all', {}, {
+                    headers: { Authorization: `Bearer ${session.access_token}` }
+                  }).then(() => setNotifications(prev => prev.map(n => ({ ...n, read: true })))).catch(() => {});
+                }
+              }}
               className="btn-ghost relative hover:scale-110 hover:bg-white/10 transition-all"
               title="Notifications"
             >
               <Bell className="w-5 h-5" />
+              {notifications.filter(n => !n.read).length > 0 && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 rounded-full text-[9px] font-black text-white flex items-center justify-center">
+                  {notifications.filter(n => !n.read).length}
+                </span>
+              )}
             </button>
 
             <AnimatePresence>
@@ -358,14 +387,18 @@ function Navbar({ onOpenAuth }) {
                   className="absolute top-full right-0 mt-4 w-80 p-4 rounded-[2rem] bg-slate-900 border border-white/10 shadow-2xl z-[100]"
                 >
                   <h3 className="font-black text-lg mb-4 px-2">Notifications</h3>
-                  <div className="space-y-2">
-                    <div className="p-4 rounded-2xl bg-white/5 border border-white/5">
-                      <p className="text-sm font-bold text-white mb-1">Welcome to WebGames! 👋</p>
-                      <p className="text-xs text-slate-400">Discover and share amazing AI-crafted games.</p>
-                    </div>
-                    <div className="p-4 rounded-2xl bg-white/5 border border-white/5 text-center">
-                      <p className="text-xs text-slate-500 font-medium">Real-time notifications coming soon!</p>
-                    </div>
+                  <div className="space-y-2 max-h-80 overflow-y-auto">
+                    {notifications.length > 0 ? notifications.map(n => (
+                      <div key={n.id} className={`p-4 rounded-2xl border transition-colors ${n.read ? 'bg-white/5 border-white/5' : 'bg-sky-500/10 border-sky-500/20'}`}>
+                        <p className="text-sm font-bold text-white mb-1">{n.message}</p>
+                        <p className="text-xs text-slate-500">{new Date(n.created_at).toLocaleDateString()}</p>
+                      </div>
+                    )) : (
+                      <div className="p-4 rounded-2xl bg-white/5 border border-white/5 text-center">
+                        <p className="text-sm font-bold text-white mb-1">Welcome to WebGames! 👋</p>
+                        <p className="text-xs text-slate-400">You'll see likes and comments here.</p>
+                      </div>
+                    )}
                   </div>
                 </motion.div>
               )}
