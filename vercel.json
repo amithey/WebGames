@@ -1,6 +1,7 @@
 {
   "buildCommand": "cd client && npm install && npm run build",
   "outputDirectory": "client/dist",
+  "alias": ["web-games-mauve.vercel.app"],
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/server/api/index.js" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
