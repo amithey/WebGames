@@ -36,6 +36,10 @@ import About from './pages/About.jsx';
 import Stats from './pages/Stats.jsx';
 import Login from './pages/Login.jsx';
 import Profile from './pages/Profile.jsx';
+import Terms from './pages/Terms.jsx';
+import Privacy from './pages/Privacy.jsx';
+import ContentPolicy from './pages/ContentPolicy.jsx';
+import Contact from './pages/Contact.jsx';
 
 // ─── Theme Context ─────────────────────────────────────────────────────────────
 const ThemeContext = createContext({ theme: 'dark', toggleTheme: () => {} });
@@ -510,17 +514,18 @@ function Footer() {
           <div>
             <h4 className="font-bold mb-6">Legal</h4>
             <ul className="space-y-4">
-              <li onClick={() => toast('Terms of Service coming soon!', { icon: '📜' })} className="text-slate-400 hover:text-sky-400 transition-colors cursor-pointer hover:translate-x-1">Terms of Service</li>
-              <li onClick={() => toast('Privacy Policy coming soon!', { icon: '🔒' })} className="text-slate-400 hover:text-sky-400 transition-colors cursor-pointer hover:translate-x-1">Privacy Policy</li>
-              <li onClick={() => toast('Content Policy coming soon!', { icon: '📋' })} className="text-slate-400 hover:text-sky-400 transition-colors cursor-pointer hover:translate-x-1">Content Policy</li>
-              <li onClick={() => toast('Contact Us coming soon!', { icon: '✉️' })} className="text-slate-400 hover:text-sky-400 transition-colors cursor-pointer hover:translate-x-1">Contact Us</li>
+              <li><Link to="/terms" className="text-slate-400 hover:text-sky-400 transition-colors">Terms of Service</Link></li>
+              <li><Link to="/privacy" className="text-slate-400 hover:text-sky-400 transition-colors">Privacy Policy</Link></li>
+              <li><Link to="/content-policy" className="text-slate-400 hover:text-sky-400 transition-colors">Content Policy</Link></li>
+              <li><Link to="/contact" className="text-slate-400 hover:text-sky-400 transition-colors">Contact Us</Link></li>
             </ul>
           </div>
         </div>
 
         <div className="pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-4">
           <p className="text-slate-500 text-sm">
-            © {new Date().getFullYear()} WebGames. Built with AI for AI creators.
+            © {new Date().getFullYear()} WebGames. Built with AI for AI creators.{' '}
+            <span className="text-slate-600">v2.0</span>
           </p>
           <div className="flex items-center gap-2 text-slate-500 text-sm">
             <span>Powered by</span>
@@ -577,8 +582,12 @@ function AppInner() {
               <Route path="/admin"       element={<Admin />}       />
               <Route path="/about"       element={<About />}       />
               <Route path="/stats"       element={<Stats />}       />
-              <Route path="/login"       element={<Login />}       />
-              <Route path="/profile"     element={<Profile />}     />
+              <Route path="/login"          element={<Login />}         />
+              <Route path="/profile"        element={<Profile />}       />
+              <Route path="/terms"          element={<Terms />}         />
+              <Route path="/privacy"        element={<Privacy />}       />
+              <Route path="/content-policy" element={<ContentPolicy />} />
+              <Route path="/contact"        element={<Contact />}       />
             </Routes>
           </motion.div>
         </AnimatePresence>
