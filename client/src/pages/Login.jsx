@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { supabase } from '../supabase';
-import { Gamepad2, Mail, Lock, ArrowRight, Github } from 'lucide-react';
+import { Gamepad2, Mail, Lock, ArrowRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function Login() {

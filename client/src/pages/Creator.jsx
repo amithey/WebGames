@@ -127,7 +127,7 @@ export default function Creator() {
             <h1 className="text-5xl sm:text-6xl font-black tracking-tight mb-4">{name}</h1>
             <div className="flex flex-wrap justify-center md:justify-start items-center gap-6 text-slate-400 font-bold">
               <div className="flex items-center gap-2"><Gamepad2 className="w-5 h-5 text-sky-400" /> {data.totalGames} Games Published</div>
-              <div className="flex items-center gap-2"><Calendar className="w-5 h-5 text-emerald-400" /> Member since 2024</div>
+              <div className="flex items-center gap-2"><Calendar className="w-5 h-5 text-emerald-400" /> {data.games.length > 0 ? `First game ${new Date(data.games[data.games.length - 1]?.createdAt).getFullYear()}` : 'New Creator'}</div>
             </div>
           </div>
 

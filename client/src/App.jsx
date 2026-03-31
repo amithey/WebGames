@@ -24,7 +24,6 @@ import {
   Mail,
   Lock,
   ArrowRight,
-  Github,
   LogOut
 } from 'lucide-react';
 import Home from './pages/Home.jsx';
@@ -483,16 +482,18 @@ function Footer() {
 function AppInner() {
   const location = useLocation();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const { theme } = useTheme();
 
   return (
     <div className="min-h-screen gradient-mesh selection:bg-sky-500/30">
       <Toaster position="bottom-right" toastOptions={{
         style: {
-          background: '#0f172a',
-          color: '#f8fafc',
-          border: '1px solid rgba(255,255,255,0.05)',
+          background: theme === 'dark' ? '#0f172a' : '#ffffff',
+          color: theme === 'dark' ? '#f8fafc' : '#0f172a',
+          border: theme === 'dark' ? '1px solid rgba(255,255,255,0.05)' : '1px solid rgba(0,0,0,0.08)',
           borderRadius: '1rem',
           fontWeight: 'bold',
+          boxShadow: theme === 'dark' ? '0 10px 40px rgba(0,0,0,0.4)' : '0 10px 40px rgba(0,0,0,0.1)',
         }
       }} />
       <Navbar onOpenAuth={() => setIsAuthModalOpen(true)} />
