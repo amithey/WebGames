@@ -118,6 +118,48 @@ router.patch('/games/:id/feature', async (req, res) => {
   }
 });
 
+// ─── GET /api/admin/comments ─────────────────────────────────────────────────
+
+router.get('/comments', async (req, res) => {
+  try {
+    const { rows } = await db.query(`
+      SELECT c.id, c.author_name, c.content, c.created_at, c.parent_id,
+             g.id AS game_id, g.title AS game_title
+      FROM comments c
+      JOIN games g ON g.id = c.game_id
+      ORDER BY c.created_at DESC
+      LIMIT 200
+    `);
+    res.json(rows.map(r => ({
+      id:         r.id,
+      authorName: r.author_name,
+      content:    r.content,
+      createdAt:  r.created_at,
+      isReply:    !!r.parent_id,
+      gameId:     r.game_id,
+      gameTitle:  r.game_title,
+    })));
+  } catch (err) {
+    console.error('Error fetching admin comments:', err);
+    res.status(500).json({ error: 'Failed to fetch comments' });
+  }
+});
+
+// ─── DELETE /api/admin/comments/:id ──────────────────────────────────────────
+
+router.delete('/comments/:id', async (req, res) => {
+  try {
+    const { rows: [deleted] } = await db.query(
+      'DELETE FROM comments WHERE id = $1 RETURNING id', [req.params.id]
+    );
+    if (!deleted) return res.status(404).json({ error: 'Comment not found' });
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Error deleting comment:', err);
+    res.status(500).json({ error: 'Failed to delete comment' });
+  }
+});
+
 // ─── GET /api/admin/reports ──────────────────────────────────────────────────
 
 router.get('/reports', async (req, res) => {

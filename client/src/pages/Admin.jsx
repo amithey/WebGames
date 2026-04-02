@@ -32,6 +32,7 @@ export default function Admin() {
   const [stats, setStats] = useState(null);
   const [games, setGames] = useState([]);
   const [reports, setReports] = useState([]);
+  const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const navigate = useNavigate();
@@ -44,14 +45,16 @@ export default function Admin() {
     if (!session) return;
     setLoading(true);
     try {
-      const [statsRes, gamesRes, reportsRes] = await Promise.all([
+      const [statsRes, gamesRes, reportsRes, commentsRes] = await Promise.all([
         axios.get('/api/admin/stats', { headers: authHeaders() }),
         axios.get('/api/admin/games', { headers: authHeaders() }),
-        axios.get('/api/admin/reports', { headers: authHeaders() }).catch(() => ({ data: [] }))
+        axios.get('/api/admin/reports', { headers: authHeaders() }).catch(() => ({ data: [] })),
+        axios.get('/api/admin/comments', { headers: authHeaders() }).catch(() => ({ data: [] }))
       ]);
       setStats(statsRes.data);
       setGames(gamesRes.data);
       setReports(reportsRes.data);
+      setComments(commentsRes.data);
     } catch (err) {
       if (err.response?.status === 403) setError('You do not have permission to view this page.');
       else if (err.response?.status === 401) navigate('/');
@@ -105,6 +108,14 @@ export default function Admin() {
     } catch (_) {}
   };
 
+  const deleteComment = async (id) => {
+    if (!window.confirm('Delete this comment?')) return;
+    try {
+      await axios.delete(`/api/admin/comments/${id}`, { headers: authHeaders() });
+      setComments(prev => prev.filter(c => c.id !== id));
+    } catch (_) {}
+  };
+
   if (loading) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
@@ -143,6 +154,7 @@ export default function Admin() {
         {[
           { id: 'overview', label: 'Overview', icon: LayoutDashboard },
           { id: 'games', label: 'Manage Games', icon: Gamepad2 },
+          { id: 'comments', label: 'Comments', icon: MessageSquare, badge: comments.length },
           { id: 'reports', label: 'Reports', icon: Flag, badge: reports.length },
           { id: 'analytics', label: 'Analytics', icon: BarChart3 },
         ].map(item => (
@@ -283,6 +295,68 @@ export default function Admin() {
                     </tbody>
                   </table>
                 </div>
+              </div>
+            )}
+
+            {activeTab === 'comments' && (
+              <div className="space-y-8">
+                <header>
+                  <h2 className="text-4xl font-black tracking-tight mb-2">All Comments</h2>
+                  <p className="text-slate-400 font-medium">Review and remove user comments.</p>
+                </header>
+
+                {comments.length > 0 ? (
+                  <div className="rounded-[2.5rem] bg-slate-900 border border-white/5 overflow-hidden">
+                    <table className="w-full text-left">
+                      <thead className="bg-slate-950/50">
+                        <tr className="text-[10px] font-black uppercase tracking-widest text-slate-500 border-b border-white/5">
+                          <th className="px-8 py-6">Author</th>
+                          <th className="px-8 py-6">Comment</th>
+                          <th className="px-8 py-6">Game</th>
+                          <th className="px-8 py-6 text-center">Type</th>
+                          <th className="px-8 py-6 text-right">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-white/5">
+                        {comments.map(comment => (
+                          <tr key={comment.id} className="hover:bg-white/[0.02] transition-colors">
+                            <td className="px-8 py-5">
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-xl bg-slate-800 flex items-center justify-center font-bold text-slate-400 text-xs shrink-0">
+                                  {comment.authorName?.[0]?.toUpperCase() || 'A'}
+                                </div>
+                                <span className="font-bold text-slate-200 text-sm">{comment.authorName}</span>
+                              </div>
+                            </td>
+                            <td className="px-8 py-5 max-w-xs">
+                              <p className="text-slate-400 text-sm line-clamp-2">{comment.content}</p>
+                              <p className="text-[10px] text-slate-600 mt-1">{new Date(comment.createdAt).toLocaleString()}</p>
+                            </td>
+                            <td className="px-8 py-5">
+                              <span className="text-sm font-bold text-sky-400 truncate block max-w-[140px]">{comment.gameTitle}</span>
+                            </td>
+                            <td className="px-8 py-5 text-center">
+                              <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase ${comment.isReply ? 'bg-indigo-500/10 text-indigo-400' : 'bg-emerald-500/10 text-emerald-400'}`}>
+                                {comment.isReply ? 'Reply' : 'Comment'}
+                              </span>
+                            </td>
+                            <td className="px-8 py-5 text-right">
+                              <button onClick={() => deleteComment(comment.id)} className="p-3 rounded-xl bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white transition-all">
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="py-32 text-center rounded-[3rem] bg-slate-900 border-2 border-dashed border-white/5">
+                    <MessageSquare className="w-16 h-16 text-slate-600 mx-auto mb-6" />
+                    <h3 className="text-2xl font-black mb-2">No Comments Yet</h3>
+                    <p className="text-slate-500 font-bold">Comments will appear here once users start engaging.</p>
+                  </div>
+                )}
               </div>
             )}
 
