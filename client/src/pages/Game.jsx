@@ -167,7 +167,7 @@ export default function Game() {
   const containerRef = useRef(null);
 
   const [game, setGame] = useState(null);
-  const [gameHtml, setGameHtml] = useState(null);
+  const [iframeLoaded, setIframeLoaded] = useState(false);
   const [relatedGames, setRelatedGames] = useState([]);
   const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -186,24 +186,6 @@ export default function Game() {
       setGame(res.data);
       setLikes(res.data.likes);
       setLiked(localStorage.getItem(`liked_${id}`) === '1');
-
-      // Fetch the actual game HTML content for srcDoc rendering
-      if (res.data.fileUrl) {
-        try {
-          const htmlRes = await fetch(res.data.fileUrl);
-          const html = await htmlRes.text();
-          // Inject a <base> tag so relative asset paths (CSS, JS, images) in ZIP
-          // games resolve correctly against the Supabase storage folder.
-          const baseUrl = res.data.fileUrl.substring(0, res.data.fileUrl.lastIndexOf('/') + 1);
-          const baseTag = `<base href="${baseUrl}">`;
-          const processed = /<head[\s>]/i.test(html)
-            ? html.replace(/<head([^>]*)>/i, (m) => m + baseTag)
-            : baseTag + html;
-          setGameHtml(processed);
-        } catch (e) {
-          console.error('Failed to fetch game HTML:', e);
-        }
-      }
 
       // Fetch related games
       if (res.data.category) {
@@ -421,21 +403,29 @@ export default function Game() {
             ref={containerRef}
             className={`relative rounded-[2rem] overflow-hidden bg-black shadow-2xl border border-white/5 ${fullscreen ? 'fixed inset-0 z-[100] rounded-none' : ''}`}
           >
-            {gameHtml ? (
-              <iframe
-                ref={iframeRef}
-                srcDoc={gameHtml}
-                sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-modals allow-pointer-lock"
-                className="w-full aspect-video border-none"
-                title={game.title}
-                allowFullScreen
-              />
+            {game.fileUrl ? (
+              <>
+                {!iframeLoaded && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black">
+                    <div className="flex flex-col items-center gap-4">
+                      <div className="w-12 h-12 border-4 border-slate-800 border-t-sky-500 rounded-full animate-spin" />
+                      <p className="text-slate-400 text-sm">Loading game...</p>
+                    </div>
+                  </div>
+                )}
+                <iframe
+                  ref={iframeRef}
+                  src={game.fileUrl}
+                  onLoad={() => setIframeLoaded(true)}
+                  sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-modals allow-pointer-lock allow-downloads"
+                  className="w-full aspect-video border-none"
+                  title={game.title}
+                  allowFullScreen
+                />
+              </>
             ) : (
               <div className="w-full aspect-video flex items-center justify-center">
-                <div className="flex flex-col items-center gap-4">
-                  <div className="w-12 h-12 border-4 border-slate-800 border-t-sky-500 rounded-full animate-spin" />
-                  <p className="text-slate-400 text-sm">Loading game...</p>
-                </div>
+                <p className="text-slate-400 text-sm">Game file not available.</p>
               </div>
             )}
             <button

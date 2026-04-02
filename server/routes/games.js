@@ -84,21 +84,25 @@ const GAME_SELECT = `
   LEFT JOIN ratings r ON r.game_id = g.id
 `;
 
-/** Upload all entries of an in-memory ZIP to Supabase Storage under files/<id>/ */
+/** Upload all entries of an in-memory ZIP to Supabase Storage under files/<id>/
+ *  Handles any directory depth — finds the shallowest index.html and uses its
+ *  folder as the root so relative asset paths always resolve correctly.
+ */
 async function uploadZip(buffer, id) {
   const zip     = new AdmZip(buffer);
   const entries = zip.getEntries().filter(e => !e.isDirectory);
 
-  let prefix = '';
-  const hasRootIndex = entries.some(e => e.entryName === 'index.html');
-  if (!hasRootIndex) {
-    const nested = entries.find(e => {
-      const parts = e.entryName.split('/');
-      return parts.length === 2 && parts[1] === 'index.html';
-    });
-    if (!nested) throw new Error('ZIP file must contain an index.html file');
-    prefix = nested.entryName.slice(0, nested.entryName.indexOf('/') + 1);
-  }
+  // Find the shallowest index.html anywhere in the ZIP
+  const indexPaths = entries
+    .map(e => e.entryName)
+    .filter(p => p.split('/').pop().toLowerCase() === 'index.html')
+    .sort((a, b) => a.split('/').length - b.split('/').length);
+
+  if (indexPaths.length === 0) throw new Error('ZIP file must contain an index.html file');
+
+  const indexPath = indexPaths[0];
+  const lastSlash = indexPath.lastIndexOf('/');
+  const prefix    = lastSlash >= 0 ? indexPath.slice(0, lastSlash + 1) : '';
 
   let indexUrl = null;
   for (const entry of entries) {
@@ -107,7 +111,7 @@ async function uploadZip(buffer, id) {
       : entry.entryName;
     if (!rel) continue;
     const url = await uploadFile(`files/${id}/${rel}`, entry.getData(), getMimeType(rel));
-    if (rel === 'index.html') indexUrl = url;
+    if (rel.toLowerCase() === 'index.html') indexUrl = url;
   }
   if (!indexUrl) throw new Error('Failed to upload index.html');
   return indexUrl;

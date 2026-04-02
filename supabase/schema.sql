@@ -72,6 +72,31 @@ CREATE TABLE IF NOT EXISTS reports (
   created_at  TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- ── User Likes ──────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS user_likes (
+  user_id  UUID  NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  game_id  TEXT  NOT NULL REFERENCES games(id) ON DELETE CASCADE,
+  PRIMARY KEY (user_id, game_id)
+);
+
+-- ── User Follows ─────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS user_follows (
+  follower_id        UUID  NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  following_username TEXT  NOT NULL,
+  PRIMARY KEY (follower_id, following_username)
+);
+
+-- ── Notifications ────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS notifications (
+  id         SERIAL      PRIMARY KEY,
+  user_id    UUID        NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  type       TEXT        NOT NULL,
+  message    TEXT        NOT NULL,
+  game_id    TEXT        REFERENCES games(id) ON DELETE CASCADE,
+  read       BOOLEAN     DEFAULT false,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- ── Indexes ───────────────────────────────────────────────────
 CREATE INDEX IF NOT EXISTS idx_games_author     ON games(author);
 CREATE INDEX IF NOT EXISTS idx_games_featured   ON games(featured);

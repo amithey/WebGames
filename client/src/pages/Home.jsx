@@ -190,6 +190,7 @@ export default function Home() {
   useEffect(() => { fetchGames(); }, [fetchGames]);
 
   const featuredGame = useMemo(() => games.find(g => g.featured) || games[0], [games]);
+  const editorsPicks = useMemo(() => games.filter(g => g.featured), [games]);
   const trendingGames = useMemo(() => [...games].sort((a, b) => b.playCount - a.playCount).slice(0, 4), [games]);
 
   const updateParam = (key, val) => {
@@ -267,6 +268,19 @@ export default function Home() {
                 </div>
               </div>
             </Link>
+          </section>
+        )}
+
+        {/* ─── Editor's Picks ──────────────────────────────────────────────── */}
+        {!loading && editorsPicks.length > 0 && (
+          <section className="mb-24">
+            <div className="flex items-center gap-3 mb-8">
+              <div className="p-2 bg-sky-500/10 rounded-xl"><Star className="w-6 h-6 text-sky-400 fill-current" /></div>
+              <h2 className="text-3xl font-black tracking-tight">Editor's Picks</h2>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {editorsPicks.map(game => <GameCard key={game.id} game={game} />)}
+            </div>
           </section>
         )}
 
