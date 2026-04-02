@@ -1,8 +1,10 @@
-const jwt = require('jsonwebtoken');
+const { createClient } = require('@supabase/supabase-js');
 const db = require('../db');
 
-// Supabase JWT Secret is required to verify tokens from the frontend
-const SUPABASE_JWT_SECRET = process.env.SUPABASE_JWT_SECRET || process.env.JWT_SECRET;
+// Supabase client used only for token verification — requires only the anon key.
+const supabaseUrl = (process.env.SUPABASE_URL || '').replace(/\s+/g, '').replace(/\/+$/, '');
+const supabaseKey = (process.env.SUPABASE_ANON_KEY || '').replace(/\s+/g, '');
+const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
 
 /** Attach req.user if valid Supabase token present; always calls next() */
 async function optionalAuth(req, res, next) {
@@ -10,27 +12,29 @@ async function optionalAuth(req, res, next) {
   const authHeader = req.headers['authorization'];
   const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
 
-  if (token) {
+  if (token && supabase) {
     try {
-      // Supabase tokens are standard JWTs signed with the project's JWT secret
-      const payload = jwt.verify(token, SUPABASE_JWT_SECRET);
-      
-      // Map Supabase payload to a standard user object
-      // sub is the user UUID in Supabase/GoTrue
-      req.user = {
-        userId: payload.sub,
-        email: payload.email,
-        username: payload.user_metadata?.username || payload.email?.split('@')[0],
-      };
+      // Verify the token via Supabase's auth API — no JWT secret needed.
+      const { data: { user }, error } = await supabase.auth.getUser(token);
 
-      // Check if user is an admin in the profiles table
-      try {
-        const { rows } = await db.query('SELECT is_admin FROM profiles WHERE id = $1', [payload.sub]);
-        req.user.isAdmin = rows[0]?.is_admin || false;
-      } catch (e) {
-        req.user.isAdmin = false;
+      if (!error && user) {
+        req.user = {
+          userId:   user.id,
+          email:    user.email,
+          username: user.user_metadata?.username || user.email?.split('@')[0],
+        };
+
+        // Check admin status in profiles table
+        try {
+          const { rows } = await db.query(
+            'SELECT is_admin FROM profiles WHERE id = $1', [user.id]
+          );
+          req.user.isAdmin = rows[0]?.is_admin || false;
+        } catch {
+          req.user.isAdmin = false;
+        }
       }
-    } catch (err) {
+    } catch {
       // Invalid token — treat as anonymous
     }
   }
